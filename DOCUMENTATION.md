@@ -1,7 +1,7 @@
 # Mass Data Importer - Complete Documentation
 
 ## Overview
-Complete Laravel 12 application with AdminLTE 2 interface for mass data import and management. Features comprehensive data visualization, import tracking, user management with role-based permissions, and audit trails.
+Complete Laravel 12 application with AdminLTE 2 interface for mass data import and management. Features comprehensive data visualization, import tracking, user management with role-based permissions, audit trails, and advanced multi-table dataset support.
 
 ## Features
 
@@ -13,24 +13,33 @@ Complete Laravel 12 application with AdminLTE 2 interface for mass data import a
 
 ### 📊 Data Import System
 - **Multi-file Upload**: Support for related CSV files (orders, customers, products, etc.)
+- **Multi-table Datasets**: Advanced support for datasets with multiple tables (e.g., inventory with products + stock_levels)
 - **Background Processing**: Laravel queue system with job monitoring
-- **Validation**: Comprehensive data validation with error reporting
+- **Advanced Validation**: Comprehensive data validation with configurable rules and foreign key support
 - **Retry Logic**: Failed imports can be retried with error clearing
 - **Email Notifications**: Automatic notifications on import completion/failure
+- **Smart Type Conversion**: Automatic data type conversion with support for nullable integer fields
 
 ### 🗄️ Imported Data Management
 - **Dynamic Datasets**: Configurable data types (orders, customers, products, stock, suppliers, tracking)
-- **Advanced Search**: Multi-column search with real-time filtering
+- **Tab-based Multi-table View**: Seamless navigation between related tables in datasets
+- **Advanced Search**: Multi-column search with real-time filtering across all dataset tables
+- **Clean Interface**: Streamlined UI without redundant navigation elements
 - **Data Export**: Excel export of filtered datasets
-- **Audit Trails**: Complete activity logging for all data operations
+- **Audit Trails**: Complete activity logging for all data operations with user tracking
 - **Bulk Operations**: Mass delete with permission checking
 
-### 📈 Import Tracking & Analytics
+### 📈 Import Tracking
 - **Import History**: Complete log of all import operations
 - **Status Monitoring**: Real-time import status tracking (pending, processing, completed, failed)
-- **Detailed Logs**: Error logs, validation issues, and processing statistics
-- **Performance Analytics**: Import duration, success rates, user activity
-- **Statistics Dashboard**: Visual charts and performance metrics
+- **Detailed Logs**: Error logs, validation issues, and processing information with user information
+- **Performance Monitoring**: Import duration and success rates
+
+### 🛠️ Maintenance & Cleanup
+- **Import Cleanup**: Automated cleanup of old imports with configurable retention policies
+- **Dry Run Mode**: Preview cleanup actions before execution
+- **Selective Cleanup**: Filter by status, age, and other criteria
+- **File Management**: Automatic cleanup of associated import files
 
 ## Technology Stack
 
@@ -88,16 +97,28 @@ QUEUE_CONNECTION=database
 
 4. **Database Setup**
 ```bash
-# Create database
-mysql -u root -p
-CREATE DATABASE massdata_import;
-exit
+# Complete setup with single command
+php artisan db:setup
 
-# Run migrations
+# Or manual setup (alternative)
+php artisan db:setup --skip-db  # if database already exists
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS massdata_import;"
 php artisan migrate
-
-# Seed admin user
 php artisan db:seed --class=AdminUserSeeder
+```
+
+**Database Setup Options:**
+```bash
+# Interactive setup (recommended)
+php artisan db:setup
+
+# Force setup without confirmation  
+php artisan db:setup --force
+
+# Skip specific steps
+php artisan db:setup --skip-db        # Skip database creation
+php artisan db:setup --skip-migrate   # Skip migrations  
+php artisan db:setup --skip-seed      # Skip admin user seeding
 ```
 
 5. **Queue Worker Setup**
@@ -140,26 +161,52 @@ php artisan serve
 5. Submit for processing
 
 #### Multi-file Import
-1. Select import type that requires multiple files
-2. Upload each required file type
+1. Select import type that requires multiple files (e.g., Inventory)
+2. Upload each required file type (products_file and stock_levels_file)
 3. System validates all files before processing
 4. Monitor progress in **Imports** section
+
+#### Advanced Multi-table Datasets
+- **Inventory Dataset**: Automatically combines products and stock_levels data
+- **Tab Navigation**: Switch between related tables seamlessly
+- **Unified Search**: Search across all tables in a dataset
+- **Foreign Key Management**: Automatic validation with fallback options
 
 #### Import Configuration
 Edit `config/imports.php` to add new import types:
 ```php
 'new_type' => [
     'label' => 'New Data Type',
-    'model' => App\Models\NewModel::class,
     'files' => [
-        'main' => [
+        'main_file' => [
             'label' => 'Main Data File',
-            'required' => true,
             'headers_to_db' => [
-                'CSV Column' => 'database_field'
+                'CSV Column' => [
+                    'label' => 'Field Label',
+                    'type' => 'string|integer|date|email',
+                    'validation' => ['required|present|nullable', 'additional_rules']
+                ]
             ]
         ]
     ]
+]
+```
+
+#### Validation Configuration
+Advanced validation rules support:
+```php
+'reserved_quantity' => [
+    'label' => 'Reserved Quantity',
+    'type' => 'integer',
+    'validation' => ['present', 'integer', 'min:0'], // Allows 0 values
+],
+'email' => [
+    'label' => 'Email Address',  
+    'type' => 'email',
+    'validation' => ['required', 'email', 'unique' => [
+        'table' => 'customers',
+        'column' => 'email'
+    ]]
 ]
 ```
 
@@ -167,19 +214,29 @@ Edit `config/imports.php` to add new import types:
 
 #### Viewing Imported Data
 1. Navigate to **Imported Data**
-2. Select dataset type (Orders, Customers, etc.)
-3. Use search filters to find specific records
-4. Export filtered results to Excel
+2. Select dataset type (Orders, Customers, Products, Inventory, etc.)
+3. **Multi-table Datasets**: Use tabs to navigate between related tables
+4. Use search filters to find specific records
+5. Export filtered results to Excel
+
+#### Multi-table Dataset Features
+- **Inventory Dataset**: 
+  - **Products Tab**: View all product information
+  - **Stock Levels Tab**: View inventory levels per warehouse
+- **Unified Interface**: Clean, sidebar-free design focused on data
+- **Tab Persistence**: Search and filters maintained when switching tabs
 
 #### Search & Filtering
 - **Global Search**: Searches across all displayed columns
 - **Real-time**: Results update as you type
+- **Multi-table Support**: Search works across all tables in dataset
 - **Export**: Export current filtered view to Excel
 
 #### Audit Trails
-- All data operations are logged
+- All data operations are logged with user information
 - View complete history of changes
 - Track user actions and timestamps
+- AJAX-powered audit popups for detailed record history
 
 ### Import Monitoring
 
@@ -187,17 +244,14 @@ Edit `config/imports.php` to add new import types:
 1. Go to **Imports** section
 2. Filter by user, type, status, or date range
 3. Click on any import to view details
+4. **Accurate Statistics**: Fixed row counting and processing time display
 
 #### Import Details
-- Processing statistics (success rate, duration)
-- Error logs with row-specific issues
-- File information and validation results
-- Retry options for failed imports
-
-#### Statistics Dashboard
-- Overall import performance metrics
-- Visual charts for status and type distribution
-- User activity tracking
+- **Processing Information**: Duration calculation and success tracking
+- **User Information**: Proper user display in import logs
+- **Error logs**: Row-specific issues with validation details
+- **File information**: Upload validation and processing results
+- **Retry options**: Re-run failed imports with error clearing
 - Processing time analysis
 
 ## Configuration Files
@@ -205,23 +259,44 @@ Edit `config/imports.php` to add new import types:
 ### Import Types (`config/imports.php`)
 ```php
 return [
-    'customer_orders' => [
-        'label' => 'Customer Orders',
-        'model' => App\Models\Order::class,
+    'inventory' => [
+        'label' => 'Import Inventory Data',
         'files' => [
-            'orders' => [...],
-            'customers' => [...],
-            'products' => [...]
+            'products_file' => [
+                'label' => 'Products File',
+                'headers_to_db' => [
+                    'sku' => [
+                        'label' => 'SKU',
+                        'type' => 'string',
+                        'validation' => ['required', 'unique' => [
+                            'table' => 'products',
+                            'column' => 'sku'
+                        ]]
+                    ]
+                ]
+            ],
+            'stock_levels_file' => [
+                'label' => 'Stock Levels File',
+                'headers_to_db' => [
+                    'reserved_quantity' => [
+                        'label' => 'Reserved Quantity',
+                        'type' => 'integer',
+                        'validation' => ['present', 'integer', 'min:0']
+                    ]
+                ]
+            ]
         ]
     ]
 ];
 ```
 
-### Key Features:
-- **Multi-file Support**: Link related data across files
-- **Validation Rules**: Define required fields and formats
-- **Column Mapping**: Map CSV headers to database fields
-- **Relationships**: Handle foreign key relationships
+### Key Configuration Features:
+- **Multi-file Support**: Link related data across multiple CSV files
+- **Advanced Validation**: Support for present, required, nullable rules
+- **Integer Zero Support**: Proper handling of 0 values in numeric fields
+- **Foreign Key Management**: Configurable constraint validation
+- **Column Mapping**: Detailed CSV header to database field mapping
+- **Type Conversion**: Automatic data type conversion with null handling
 
 ## Database Schema
 
@@ -246,7 +321,6 @@ return [
 GET    /admin/imports              # List all imports
 GET    /admin/imports/{id}         # View import details
 POST   /admin/imports/{id}/retry   # Retry failed import
-GET    /admin/imports/statistics   # View statistics
 ```
 
 ### Data Management
@@ -379,8 +453,20 @@ php artisan queue:restart
 # Clear expired sessions
 php artisan session:gc
 
-# Clean up old import files
+# Clean up old import files and records
 php artisan import:cleanup
+
+# Preview cleanup without deleting (dry run)
+php artisan import:cleanup --dry-run
+
+# Clean imports older than 7 days
+php artisan import:cleanup --days=7
+
+# Clean only failed imports
+php artisan import:cleanup --status=failed
+
+# Clean all imports regardless of status
+php artisan import:cleanup --status=all
 
 # Backup database
 mysqldump -u username -p massdata_import > backup.sql
@@ -389,17 +475,74 @@ mysqldump -u username -p massdata_import > backup.sql
 composer update
 ```
 
+### Import Cleanup Command
+The `import:cleanup` command provides comprehensive cleanup functionality:
+
+#### Command Options:
+- `--days=X`: Keep imports newer than X days (default: 30)
+- `--status=completed|failed|all`: Filter by import status (default: completed)
+- `--dry-run`: Preview what would be deleted without actually deleting
+
+#### What Gets Cleaned:
+- **Import Records**: Old import operation records
+- **Import Errors**: Associated validation errors
+- **Audit Records**: Related audit trail entries  
+- **Import Files**: Uploaded CSV files from storage
+
+#### Examples:
+```bash
+# Safe preview of what would be cleaned
+php artisan import:cleanup --dry-run --days=7
+
+# Clean completed imports older than 2 weeks
+php artisan import:cleanup --days=14
+
+# Emergency cleanup of all imports older than 1 day
+php artisan import:cleanup --days=1 --status=all
+```
+
 ### Monitoring
 - Monitor queue job failures
 - Track import success rates
 - Monitor disk space for uploads
 - Watch application logs for errors
 
-## Support & Development
+## Recent Updates & Bug Fixes
+
+### Version 1.2.0 - UI/UX Improvements & Bug Fixes
+
+#### UI/UX Improvements & Bug Fixes ✅
+- **Fixed Import Display**: Corrected row counting and processing time display
+- **User Display**: Resolved "User: Unknown" in import logs by adding proper relation loading
+
+#### Advanced Multi-table Support ✅
+- **Tab-based Navigation**: Implemented seamless tabs for multi-table datasets
+- **Inventory Dataset**: Complete support for products + stock_levels tables
+- **Unified Search**: Search functionality works across all tables in dataset
+- **Clean Interface**: Removed redundant sidebar for streamlined data view
+
+#### Validation & Data Handling ✅
+- **Integer Zero Support**: Fixed validation to properly handle 0 values in numeric fields
+- **Advanced Validation Rules**: Support for `present|integer|min:0` patterns
+- **Foreign Key Management**: Improved constraint handling with validation fallbacks
+- **Type Conversion**: Enhanced data type conversion with proper null handling
+
+#### Maintenance & Cleanup ✅
+- **Import Cleanup Command**: New `php artisan import:cleanup` with configurable options
+- **Dry Run Mode**: Preview cleanup actions before execution
+- **Selective Cleanup**: Filter by age, status, and other criteria
+- **Automatic File Cleanup**: Remove associated import files during cleanup
+
+#### Technical Improvements ✅
+- **ProcessImportJob**: Enhanced processing and error handling
+- **ImportsController**: Fixed processing time calculation and user relation loading
+- **ImportedDataController**: Multi-table dataset support with tab navigation
+- **Database Schema**: Optimized foreign key constraints and default values
 
 ### File Structure
 ```
 app/
+├── Console/Commands/           # Artisan commands (ImportCleanup)
 ├── Http/Controllers/Admin/     # Admin panel controllers
 ├── Jobs/                       # Background job classes
 ├── Models/                     # Eloquent models
@@ -407,8 +550,43 @@ app/
 └── Listeners/                  # Event listeners
 
 resources/views/admin/          # Admin panel templates
+├── imported-data/              # Multi-table dataset views
+├── imports/                    # Import management views
+└── users/                      # User management views
+
 config/imports.php              # Import configuration
 database/migrations/            # Database schema
+```
+
+### Known Issues & Solutions
+
+#### Common Problems Fixed:
+1. **"reserved_quantity field is required" Error**: 
+   - **Solution**: Updated validation to use `present|integer|min:0` instead of `required|min:0`
+   - **Why**: Laravel treats 0 as empty when using `required` validator
+
+2. **Import Display Issues**:
+   - **Solution**: Fixed row counting logic in ProcessImportJob
+   - **Implementation**: Proper array counting after header removal
+
+3. **Processing Time Shows "N/A"**:
+   - **Solution**: Corrected Carbon date difference calculation
+   - **Fix**: Changed from `$end->diffInSeconds($start)` to `$start->diffInSeconds($end)`
+
+4. **User Shows "Unknown" in Logs**:
+   - **Solution**: Added user relation loading in logs method
+   - **Implementation**: `$import->load('user')` before AJAX response
+
+#### Validation Best Practices:
+```php
+// For numeric fields that can be 0
+'validation' => ['present', 'integer', 'min:0']
+
+// For required fields that cannot be empty
+'validation' => ['required', 'string', 'max:255']
+
+// For nullable fields with defaults
+'validation' => ['nullable', 'integer', 'min:0']
 ```
 
 ### Contributing
@@ -424,5 +602,13 @@ database/migrations/            # Database schema
 - **PHP**: 8.2+
 - **AdminLTE**: 2.4.18
 - **Database**: MySQL 8.0+
+- **Version**: 1.2.0 (November 2025)
+
+### Recent Updates:
+- ✅ Fixed import display issues
+- ✅ Enhanced multi-table dataset support with tabs
+- ✅ Improved validation for numeric fields
+- ✅ Added comprehensive import cleanup functionality
+- ✅ Streamlined UI with sidebar removal for data views
 
 For technical support or feature requests, please refer to the project repository or contact the development team.

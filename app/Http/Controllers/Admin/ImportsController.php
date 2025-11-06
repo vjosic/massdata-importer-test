@@ -196,30 +196,4 @@ class ImportsController extends Controller
         // For very fast processing (same second), show at least 1 second
         return max($seconds, 1);
     }
-    
-    /**
-     * Get import statistics
-     */
-    public function statistics()
-    {
-        $stats = [
-            'total_imports' => Import::count(),
-            'successful_imports' => Import::where('status', 'completed')->count(),
-            'failed_imports' => Import::where('status', 'failed')->count(),
-            'partial_imports' => Import::where('status', 'completed_with_errors')->count(),
-            'pending_imports' => Import::whereIn('status', ['pending', 'processing'])->count(),
-            'total_rows_processed' => Import::sum('inserted_rows') + Import::sum('updated_rows'),
-            'total_errors' => Import::sum('error_count'),
-            'imports_by_type' => Import::selectRaw('import_type, count(*) as count')
-                                     ->groupBy('import_type')
-                                     ->pluck('count', 'import_type')
-                                     ->toArray(),
-            'recent_imports' => Import::with('user')
-                                     ->orderBy('created_at', 'desc')
-                                     ->limit(5)
-                                     ->get()
-        ];
-        
-        return response()->json($stats);
-    }
 }

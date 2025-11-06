@@ -48,6 +48,5 @@ Route::middleware('auth')->group(function () {
         Route::get('imports/{import}', [ImportsController::class, 'show'])->name('imports.show');
         Route::get('imports/{import}/logs', [ImportsController::class, 'logs'])->name('imports.logs');
         Route::post('imports/{import}/retry', [ImportsController::class, 'retry'])->name('imports.retry');
-        Route::get('imports-statistics', [ImportsController::class, 'statistics'])->name('imports.statistics');
     });
 });

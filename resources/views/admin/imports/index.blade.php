@@ -14,9 +14,6 @@
             <div class="box-header with-border">
                 <h3 class="box-title">Import Operations</h3>
                 <div class="box-tools pull-right">
-                    <a href="{{ route('admin.imports.statistics') }}" class="btn btn-info btn-sm">
-                        <i class="fa fa-bar-chart"></i> View Statistics
-                    </a>
                     <button type="button" class="btn btn-default btn-sm" onclick="refreshTable()">
                         <i class="fa fa-refresh"></i> Refresh
                     </button>
