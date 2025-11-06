@@ -1,4 +1,4 @@
 customer_id,customer_name,email,phone,address,city,country
 C001,Marko Petrović,marko@example.com,062123456,Karađorđeva 12,Subotica,Serbia
-C002,,anaexample.com,063999999,Bulevar Oslobođenja 5,Novi Sad,Serbia
+C002,Ana Jovanović,ana@example.com,063999999,Bulevar Oslobođenja 5,Novi Sad,Serbia
 C003,Nikola Lukić,nikola@example.com,,Glavna 33,Zrenjanin,Serbia

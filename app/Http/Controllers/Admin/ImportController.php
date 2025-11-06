@@ -158,6 +158,11 @@ class ImportController extends Controller
             }, $uploadedFiles)),
             'file_names' => $storedFilePaths,
             'status' => 'pending',
+            'total_rows' => 0, // Will be updated by ProcessImportJob
+            'inserted_rows' => 0,
+            'updated_rows' => 0,
+            'skipped_rows' => 0,
+            'error_count' => 0,
             'started_at' => now()
         ]);
 

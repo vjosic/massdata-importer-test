@@ -63,6 +63,9 @@ class ImportsController extends Controller
      */
     public function logs(Import $import)
     {
+        // Load user relationship for proper display
+        $import->load('user');
+        
         // Get import errors
         $errors = ImportError::where('import_id', $import->id)
                            ->orderBy('row_number')
@@ -187,7 +190,11 @@ class ImportsController extends Controller
         $start = \Carbon\Carbon::parse($import->started_at);
         $end = \Carbon\Carbon::parse($import->finished_at);
         
-        return $end->diffInSeconds($start);
+        // Calculate difference in seconds (absolute value to handle same timestamps)
+        $seconds = $start->diffInSeconds($end);
+        
+        // For very fast processing (same second), show at least 1 second
+        return max($seconds, 1);
     }
     
     /**

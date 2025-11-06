@@ -19,15 +19,12 @@ return [
                     'channel' => [
                         'label' => 'Channel',
                         'type' => 'string',
-                        'validation' => ['required', 'in' => ['PT', 'Amazon']],
+                        'validation' => ['required', 'in' => ['PT', 'Amazon', 'eBay']],
                     ],
                     'sku' => [
                         'label' => 'SKU',
                         'type' => 'string',
-                        'validation' => ['required', 'exists' => [
-                            'table' => 'products',
-                            'column' => 'sku'
-                        ]],
+                        'validation' => ['required', 'uniq'],
                     ],
                     'item_description' => [
                         'label' => 'Item Description',
@@ -137,7 +134,7 @@ return [
                     'carrier' => [
                         'label' => 'Shipping Carrier',
                         'type' => 'string',
-                        'validation' => ['required', 'in' => ['UPS', 'FedEx', 'DHL', 'USPS']],
+                        'validation' => ['required', 'in' => ['UPS', 'FedEx', 'DHL', 'USPS', 'Posta']],
                     ],
                     'shipped_date' => [
                         'label' => 'Shipped Date',

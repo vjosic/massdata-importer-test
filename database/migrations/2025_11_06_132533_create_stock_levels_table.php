@@ -27,7 +27,7 @@ return new class extends Migration
             // Unique constraint based on update_or_create config
             $table->unique(['sku', 'warehouse_location']);
             
-            // Foreign key to products table
+            // Foreign key to products table - ensures data integrity
             $table->foreign('sku')->references('sku')->on('products')->onDelete('cascade');
         });
     }

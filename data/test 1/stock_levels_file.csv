@@ -1,0 +1,5 @@
+sku,warehouse_location,quantity_on_hand,reserved_quantity,reorder_point,last_counted_date
+A123,WH-1,10,0,5,2025-01-10
+A124,WH-2,20,2,5,2025-01-11
+A125,WH-3,-5,0,5,2025-01-12
+A125,WH-3,-5,0,5,2025-01-11

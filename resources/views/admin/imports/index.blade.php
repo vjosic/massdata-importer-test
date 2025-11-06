@@ -127,7 +127,11 @@
                                 if ($import->started_at && $import->finished_at) {
                                     $start = \Carbon\Carbon::parse($import->started_at);
                                     $end = \Carbon\Carbon::parse($import->finished_at);
-                                    $processingTime = $end->diffInSeconds($start);
+                                    $processingTime = $start->diffInSeconds($end);
+                                    // For very fast processing (same second), show at least 1 second
+                                    if ($processingTime == 0) {
+                                        $processingTime = 1;
+                                    }
                                 }
                             @endphp
                             <tr>
@@ -157,11 +161,44 @@
                                     </span>
                                 </td>
                                 <td>
-                                    @if($import->total_rows > 0)
-                                        <strong>{{ number_format($import->total_rows) }}</strong><br>
-                                        <small class="text-success">✓ {{ number_format($import->inserted_rows + $import->updated_rows) }}</small>
+                                    @php
+                                        $processedRows = $import->inserted_rows + $import->updated_rows + $import->skipped_rows;
+                                        $displayTotal = $import->total_rows > 0 ? $import->total_rows : $processedRows;
+                                        
+                                        // For better accuracy, calculate actual processed records from audit trail
+                                        $actualProcessed = 0;
+                                        if($import->status === 'completed') {
+                                            try {
+                                                $createdRecords = DB::table('audits')
+                                                    ->where('import_id', $import->id)
+                                                    ->where('column', 'created')
+                                                    ->count();
+                                                if($createdRecords > 0) {
+                                                    $actualProcessed = $createdRecords;
+                                                }
+                                            } catch (Exception $e) {
+                                                // Fallback to original calculation
+                                                $actualProcessed = $processedRows;
+                                            }
+                                        }
+                                        
+                                        $showActual = $actualProcessed > 0 && $actualProcessed != $processedRows;
+                                    @endphp
+                                    @if($processedRows > 0 || $import->total_rows > 0)
+                                        <strong>{{ number_format($displayTotal) }}</strong><br>
+                                        @if($showActual)
+                                            <small class="text-success">✓ {{ number_format($actualProcessed) }} successfully processed</small>
+                                        @else
+                                            @if($import->inserted_rows > 0)
+                                                <small class="text-success">✓ {{ number_format($import->inserted_rows) }} inserted</small>
+                                            @endif
+                                            @if($import->updated_rows > 0)
+                                                @if($import->inserted_rows > 0)<br>@endif
+                                                <small class="text-info">↻ {{ number_format($import->updated_rows) }} updated</small>
+                                            @endif
+                                        @endif
                                         @if($import->skipped_rows > 0)
-                                            <br><small class="text-warning">⊝ {{ number_format($import->skipped_rows) }}</small>
+                                            <br><small class="text-warning">⊝ {{ number_format($import->skipped_rows) }} skipped</small>
                                         @endif
                                     @else
                                         <span class="text-muted">N/A</span>

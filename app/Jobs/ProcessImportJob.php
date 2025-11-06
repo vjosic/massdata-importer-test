@@ -47,10 +47,17 @@ class ProcessImportJob implements ShouldQueue
             Log::info("Starting import job for import ID: {$this->importRecord->id}");
             
             // Update import status to processing
-            $this->importRecord->update(['status' => 'processing']);
+            $this->importRecord->update([
+                'status' => 'processing',
+                'started_at' => now()
+            ]);
             
             $totalProcessed = 0;
             $totalErrors = 0;
+            $totalRows = 0;
+            $insertedRows = 0;
+            $updatedRows = 0;
+            $skippedRows = 0;
 
             // Process each uploaded file
             foreach ($this->filePaths as $fileKey => $filePath) {
@@ -61,18 +68,25 @@ class ProcessImportJob implements ShouldQueue
                 $result = $this->processFile($filePath, $fileKey, $fileConfig);
                 $totalProcessed += $result['processed'];
                 $totalErrors += $result['errors'];
+                $totalRows += $result['total_rows'];
+                $insertedRows += $result['inserted'];
+                $updatedRows += $result['updated'];
+                $skippedRows += $result['skipped'];
             }
 
-            // Update import record with final status
+            // Update import record with final status and complete statistics
             $this->importRecord->update([
                 'status' => $totalErrors > 0 ? 'completed_with_errors' : 'completed',
                 'finished_at' => now(),
                 'processed_at' => now(),
-                'inserted_rows' => $totalProcessed,
+                'total_rows' => $totalRows,
+                'inserted_rows' => $insertedRows,
+                'updated_rows' => $updatedRows,
+                'skipped_rows' => $skippedRows,
                 'error_count' => $totalErrors
             ]);
 
-            Log::info("Import completed. Processed: {$totalProcessed}, Errors: {$totalErrors}");
+            Log::info("Import completed. Total: {$totalRows}, Processed: {$totalProcessed}, Errors: {$totalErrors}");
 
         } catch (Exception $e) {
             Log::error("Import job failed: " . $e->getMessage());
@@ -99,10 +113,14 @@ class ProcessImportJob implements ShouldQueue
     {
         $processed = 0;
         $errors = 0;
+        $inserted = 0;
+        $updated = 0;
+        $skipped = 0;
         
         try {
             $data = $this->readFileData($filePath);
             $headers = array_shift($data); // Remove header row
+            $totalRows = count($data); // Count actual data rows
             
             // Map headers to database columns
             $headerMapping = $this->createHeaderMapping($headers, $fileConfig['headers_to_db']);
@@ -128,6 +146,7 @@ class ProcessImportJob implements ShouldQueue
                             ]);
                         }
                         $errors++;
+                        $skipped++;
                         continue; // Skip this row
                     }
                     
@@ -136,12 +155,18 @@ class ProcessImportJob implements ShouldQueue
                     
                     // Use update or create based on config
                     $updateOrCreateKeys = $fileConfig['update_or_create'] ?? [];
-                    $this->upsertRecord($tableName, $mappedData, $updateOrCreateKeys, $rowIndex + 2);
+                    $operationResult = $this->upsertRecord($tableName, $mappedData, $updateOrCreateKeys, $rowIndex + 2);
                     
+                    if ($operationResult['is_update']) {
+                        $updated++;
+                    } else {
+                        $inserted++;
+                    }
                     $processed++;
                     
                 } catch (Exception $e) {
                     $errors++;
+                    $skipped++;
                     
                     // Log individual row error
                     DB::table('import_errors')->insert([
@@ -163,7 +188,14 @@ class ProcessImportJob implements ShouldQueue
             throw $e;
         }
         
-        return ['processed' => $processed, 'errors' => $errors];
+        return [
+            'processed' => $processed, 
+            'errors' => $errors,
+            'total_rows' => $totalRows,
+            'inserted' => $inserted,
+            'updated' => $updated,
+            'skipped' => $skipped
+        ];
     }
 
     /**
@@ -272,6 +304,10 @@ class ProcessImportJob implements ShouldQueue
     private function convertValue($value, $type)
     {
         if ($value === null || $value === '') {
+            // For integer types, return 0 instead of null to handle default values
+            if ($type === 'integer') {
+                return 0;
+            }
             return null;
         }
         
@@ -397,7 +433,10 @@ class ProcessImportJob implements ShouldQueue
             }
         }
         
-        return $recordId;
+        return [
+            'id' => $recordId,
+            'is_update' => $isUpdate
+        ];
     }
 
     /**

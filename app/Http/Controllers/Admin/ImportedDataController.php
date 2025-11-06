@@ -43,8 +43,16 @@ class ImportedDataController extends Controller
             abort(404, 'Dataset not found');
         }
         
-        // Get the table name from first file config
-        $tableName = $this->getTableNameFromDataset($dataset);
+        // Get all tables for this dataset
+        $tables = $this->getTablesFromDataset($dataset);
+        $activeTable = $request->get('table', array_key_first($tables));
+        
+        // Validate active table
+        if (!array_key_exists($activeTable, $tables)) {
+            $activeTable = array_key_first($tables);
+        }
+        
+        $tableName = $tables[$activeTable]['table'];
         
         // Get search query
         $search = $request->get('search', '');
@@ -61,7 +69,7 @@ class ImportedDataController extends Controller
         $data = $query->paginate(25)->appends($request->query());
         
         // Get headers for display
-        $headers = $this->getDisplayHeaders($dataset);
+        $headers = $this->getDisplayHeaders($dataset, $activeTable);
         
         // Check if user can delete records
         $canDelete = Gate::allows($config['permission_required']);
@@ -73,7 +81,9 @@ class ImportedDataController extends Controller
             'headers', 
             'search', 
             'canDelete',
-            'importConfigs'
+            'importConfigs',
+            'tables',
+            'activeTable'
         ));
     }
     
@@ -196,14 +206,14 @@ class ImportedDataController extends Controller
     }
     
     /**
-     * Get table name from dataset configuration
+     * Get table mapping for dataset
      */
     private function getTableNameFromDataset($dataset)
     {
         // Map dataset to table names
         $tableMap = [
             'orders' => 'orders',
-            'inventory' => 'stock_levels',
+            'inventory' => 'stock_levels', // Default table for backward compatibility
             'suppliers' => 'suppliers'
         ];
         
@@ -211,21 +221,93 @@ class ImportedDataController extends Controller
     }
     
     /**
+     * Get all tables available for a dataset
+     */
+    private function getTablesFromDataset($dataset)
+    {
+        $config = config("imports.{$dataset}");
+        $tables = [];
+        
+        if (isset($config['files'])) {
+            // Dataset with multiple files (like inventory)
+            foreach ($config['files'] as $fileKey => $fileConfig) {
+                $tableName = $this->getTableNameFromFileKey($fileKey);
+                $tables[$tableName] = [
+                    'table' => $tableName,
+                    'label' => $fileConfig['label'],
+                    'file_key' => $fileKey
+                ];
+            }
+        } else {
+            // Single table dataset
+            $tableName = $this->getTableNameFromDataset($dataset);
+            $tables[$tableName] = [
+                'table' => $tableName,
+                'label' => $config['label'],
+                'file_key' => $dataset
+            ];
+        }
+        
+        return $tables;
+    }
+    
+    /**
+     * Get table name from file key
+     */
+    private function getTableNameFromFileKey($fileKey)
+    {
+        // Map file keys to actual table names
+        $tableMap = [
+            'orders_file' => 'orders',
+            'customers_file' => 'customers', 
+            'tracking_file' => 'tracking',
+            'products_file' => 'products',
+            'stock_levels_file' => 'stock_levels',
+            'suppliers_file' => 'suppliers'
+        ];
+        
+        return $tableMap[$fileKey] ?? str_replace('_file', '', $fileKey);
+    }
+    
+    /**
      * Get display headers for dataset
      */
-    private function getDisplayHeaders($dataset)
+    private function getDisplayHeaders($dataset, $activeTable = null)
     {
         $config = config("imports.{$dataset}");
         $headers = [];
         
-        // Get headers from first file configuration
-        $firstFile = array_values($config['files'])[0];
-        
-        foreach ($firstFile['headers_to_db'] as $field => $fieldConfig) {
-            $headers[$field] = [
-                'label' => $fieldConfig['label'],
-                'type' => $fieldConfig['type'] ?? 'string'
-            ];
+        if (isset($config['files']) && $activeTable) {
+            // Find the corresponding file configuration for the active table
+            $tables = $this->getTablesFromDataset($dataset);
+            $fileKey = $tables[$activeTable]['file_key'] ?? null;
+            
+            if ($fileKey && isset($config['files'][$fileKey])) {
+                $fileConfig = $config['files'][$fileKey];
+                
+                foreach ($fileConfig['headers_to_db'] as $field => $fieldConfig) {
+                    $headers[$field] = [
+                        'label' => $fieldConfig['label'],
+                        'type' => $fieldConfig['type'] ?? 'string'
+                    ];
+                }
+            }
+        } else {
+            // Fallback for single table datasets or when no active table specified
+            if (isset($config['files'])) {
+                $firstFile = array_values($config['files'])[0];
+            } else {
+                $firstFile = $config;
+            }
+            
+            if (isset($firstFile['headers_to_db'])) {
+                foreach ($firstFile['headers_to_db'] as $field => $fieldConfig) {
+                    $headers[$field] = [
+                        'label' => $fieldConfig['label'],
+                        'type' => $fieldConfig['type'] ?? 'string'
+                    ];
+                }
+            }
         }
         
         // Add system fields
