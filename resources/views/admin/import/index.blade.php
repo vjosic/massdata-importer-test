@@ -16,6 +16,27 @@
                 <h3 class="box-title">Import Data</h3>
             </div>
             <!-- /.box-header -->
+            
+            <!-- Error Messages -->
+            @if ($errors->any())
+                <div class="alert alert-danger">
+                    <h4><i class="icon fa fa-ban"></i> Import Error!</h4>
+                    <ul style="margin-bottom: 0;">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+            
+            <!-- Success Message -->
+            @if (session('success'))
+                <div class="alert alert-success">
+                    <h4><i class="icon fa fa-check"></i> Success!</h4>
+                    {{ session('success') }}
+                </div>
+            @endif
+            
             <form method="POST" action="{{ route('admin.import.upload') }}" enctype="multipart/form-data" id="importForm">
                 @csrf
                 <div class="box-body">
@@ -128,9 +149,16 @@ $(document).ready(function() {
             return;
         }
         
+        // Always hide previous sections first
+        $('#file-upload-section').hide();
+        $('#required-headers-section').hide();
+        $('#file-inputs').html('');
+        $('#required-headers-content').html('');
+        $('#import-btn').prop('disabled', true);
+        
         if (importType) {
             ajaxInProgress = true;
-            // Get required headers via AJAX
+            
             $.get('{{ route("admin.import.headers") }}', { import_type: importType })
                 .done(function(data) {
                     showFileInputs(data);
@@ -143,8 +171,6 @@ $(document).ready(function() {
                 .always(function() {
                     ajaxInProgress = false;
                 });
-        } else {
-            resetForm();
         }
     });
 
@@ -177,7 +203,7 @@ function showFileInputs(data) {
                 <label for="file_${fileKey}">${fileConfig.label}</label>
                 <input type="file" class="form-control" id="file_${fileKey}" name="${fileKey}" 
                        accept=".xlsx,.csv">
-                <span class="help-block">Accepted formats: .xlsx, .csv (Max size: 10MB). At least one file is required.</span>
+                <span class="help-block permanent-help">Accepted formats: .xlsx, .csv (Max size: 10MB). At least one file is required.</span>
             </div>
         `;
     });
@@ -206,18 +232,15 @@ function showRequiredHeaders(data) {
 }
 
 function resetForm() {
-    // Don't automatically reset if user has selected an import type
-    const selectedImportType = $('#import_type').val();
-    if (selectedImportType) {
-        return false;
-    }
+    // Reset form to initial state
+    $('#import_type').val('').trigger('change');
     
-    $('#file-upload-section').hide();
-    $('#required-headers-section').hide();
-    $('#file-inputs').html('');
-    $('#required-headers-content').html('');
-    $('#import-btn').prop('disabled', true);
-    $('#import_type').val('');
+    // Clear any error messages
+    $('.alert').remove();
+    
+    // Reset any validation states
+    $('.form-group').removeClass('has-error');
+    $('.help-block').not('.permanent-help').remove();
 }
 </script>
 @endpush

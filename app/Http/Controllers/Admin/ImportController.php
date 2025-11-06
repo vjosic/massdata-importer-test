@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 
 class ImportController extends Controller
 {
@@ -74,10 +75,16 @@ class ImportController extends Controller
      */
     public function upload(Request $request)
     {
-        $importType = $request->get('import_type');
-        $importConfig = config("imports.{$importType}");
+        try {
+            // Basic validation
+            $request->validate([
+                'import_type' => 'required|string'
+            ]);
 
-        // 1. Validate import type and permissions
+            $importType = $request->get('import_type');
+            $importConfig = config("imports.{$importType}");
+
+            // 1. Validate import type and permissions
         if (!$importConfig || !Gate::allows($importConfig['permission_required'])) {
             return redirect()->back()->withErrors(['import_type' => 'Invalid import type or insufficient permissions.']);
         }
@@ -176,6 +183,11 @@ class ImportController extends Controller
         );
 
         return redirect()->back()->with('success', 'Import has been started and is being processed in the background. You will be notified when complete.');
+        
+        } catch (\Exception $e) {
+            Log::error('Import upload failed: ' . $e->getMessage());
+            return redirect()->back()->withErrors(['general' => 'An error occurred while processing your import. Please check your files and try again.']);
+        }
     }
 
     /**
