@@ -15,32 +15,21 @@ class PermissionSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create permissions
-        $permissions = [
-            'user-management',
-            'user-create',
-            'user-edit', 
-            'user-delete',
-            'user-view',
-            'permission-create',
-            'permission-edit',
-            'permission-delete',
-            'permission-view',
-            'permission-assign',
+        // Create new permissions only
+        $newPermissions = [
+            'import-orders',
+            'import-inventory',
+            'import-suppliers',
         ];
 
-        foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+        foreach ($newPermissions as $permission) {
+            Permission::firstOrCreate(['name' => $permission]);
         }
 
-        // Create admin role and assign all permissions
-        $adminRole = Role::create(['name' => 'admin']);
-        $adminRole->givePermissionTo(Permission::all());
-
-        // Assign admin role to admin user
-        $adminUser = User::where('name', 'admin')->first();
-        if ($adminUser) {
-            $adminUser->assignRole('admin');
+        // Update admin role to have all permissions
+        $adminRole = Role::where('name', 'admin')->first();
+        if ($adminRole) {
+            $adminRole->givePermissionTo(Permission::all());
         }
     }
 }

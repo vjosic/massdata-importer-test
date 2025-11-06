@@ -1,0 +1,5 @@
+so_num,tracking_number,carrier,shipped_date,estimated_delivery
+SO001,TRK001,UPS,2025-01-12,2025-01-15
+SO002,TRK002,FedEx,2025-01-13,2025-01-17
+SO003,TRK003,Posta,2025-01-14,2025-01-18
+SO004,TRK004,DHL,2025-01-15,

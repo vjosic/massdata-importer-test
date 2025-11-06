@@ -1,0 +1,5 @@
+order_date,channel,sku,item_description,origin,so_num,cost,shipping_cost,total_price
+2025-01-10,PT,A123,Laptop Dell X1,SRB,SO001,850,25,875
+2025-01-11,Amazon,A124,Mouse Logitech,SRB,SO002,20,3,23
+2025-01-12,PT,,Keyboard K120,HUN,SO003,15,4,19
+2025-01-13,eBay,A126,Speaker,HUN,SO004,40,5,45

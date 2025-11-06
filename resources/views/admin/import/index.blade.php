@@ -1,0 +1,223 @@
+@extends('layouts.adminlte')
+
+@section('title', 'Data Import')
+@section('page_title', 'Data Import')
+@section('page_description', 'Import data from Excel or CSV files')
+
+@section('breadcrumb')
+    <li class="active">Data Import</li>
+@endsection
+
+@section('content')
+<div class="row">
+    <div class="col-md-12">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Import Data</h3>
+            </div>
+            <!-- /.box-header -->
+            <form method="POST" action="{{ route('admin.import.upload') }}" enctype="multipart/form-data" id="importForm">
+                @csrf
+                <div class="box-body">
+                    <!-- Import Type Selection -->
+                    <div class="form-group @error('import_type') has-error @enderror">
+                        <label for="import_type">Import Type</label>
+                        <select class="form-control" id="import_type" name="import_type" required>
+                            <option value="">Select what you want to import...</option>
+                            @foreach($availableImports as $key => $config)
+                                <option value="{{ $key }}" {{ old('import_type') == $key ? 'selected' : '' }}>
+                                    {{ $config['label'] }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('import_type')
+                            <span class="help-block">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <!-- File Upload Section -->
+                    <div id="file-upload-section" style="display: none;">
+                        <div id="file-inputs">
+                            <!-- File inputs will be dynamically generated here -->
+                        </div>
+                    </div>
+
+                    <!-- Required Headers Section -->
+                    <div id="required-headers-section" style="display: none;">
+                        <div class="box box-info">
+                            <div class="box-header with-border">
+                                <h3 class="box-title"><i class="fa fa-info-circle"></i> Required Headers</h3>
+                            </div>
+                            <div class="box-body">
+                                <p>Make sure your file(s) contain the following headers:</p>
+                                <div id="required-headers-content">
+                                    <!-- Headers will be dynamically loaded here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /.box-body -->
+
+                <div class="box-footer">
+                    <button type="submit" class="btn btn-primary" id="import-btn" disabled>
+                        <i class="fa fa-upload"></i> Start Import
+                    </button>
+                    <button type="button" class="btn btn-default" onclick="resetForm()">
+                        <i class="fa fa-refresh"></i> Reset
+                    </button>
+                </div>
+            </form>
+        </div>
+        <!-- /.box -->
+    </div>
+</div>
+@endsection
+
+@push('js')
+<style>
+#required-headers-section .box {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f1f8e9 100%);
+    border: 1px solid #81c784;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#required-headers-section .box-header {
+    background: linear-gradient(135deg, #4caf50 0%, #2196f3 100%);
+    color: white;
+    border-bottom: 1px solid #45a049;
+}
+
+#required-headers-section .box-body {
+    color: #2e7d32;
+}
+
+#required-headers-section h5 {
+    color: #1976d2;
+    margin-bottom: 10px;
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+#required-headers-section ul {
+    background: rgba(255, 255, 255, 0.7);
+    padding: 10px 15px;
+    border-radius: 4px;
+    border-left: 4px solid #4caf50;
+    margin-bottom: 15px;
+}
+
+#required-headers-section li {
+    color: #333;
+    margin-bottom: 5px;
+}
+
+#required-headers-section .text-red {
+    color: #f44336 !important;
+    font-weight: bold;
+}
+</style>
+<script>
+$(document).ready(function() {
+    let ajaxInProgress = false;
+    
+    $('#import_type').change(function() {
+        const importType = $(this).val();
+        
+        if (ajaxInProgress) {
+            return;
+        }
+        
+        if (importType) {
+            ajaxInProgress = true;
+            // Get required headers via AJAX
+            $.get('{{ route("admin.import.headers") }}', { import_type: importType })
+                .done(function(data) {
+                    showFileInputs(data);
+                    showRequiredHeaders(data);
+                    $('#import-btn').prop('disabled', false);
+                })
+                .fail(function(xhr, status, error) {
+                    alert('Error loading import configuration: ' + xhr.responseText);
+                })
+                .always(function() {
+                    ajaxInProgress = false;
+                });
+        } else {
+            resetForm();
+        }
+    });
+
+    // Form submission validation
+    $('#importForm').submit(function(e) {
+        const fileInputs = $('#file-inputs input[type="file"]');
+        let hasAtLeastOneFile = false;
+        
+        fileInputs.each(function() {
+            if (this.files && this.files.length > 0) {
+                hasAtLeastOneFile = true;
+            }
+        });
+        
+        if (!hasAtLeastOneFile) {
+            e.preventDefault();
+            alert('Please select at least one file to upload.');
+            return false;
+        }
+    });
+});
+
+function showFileInputs(data) {
+    let html = '';
+    
+    Object.keys(data).forEach(function(fileKey) {
+        const fileConfig = data[fileKey];
+        html += `
+            <div class="form-group">
+                <label for="file_${fileKey}">${fileConfig.label}</label>
+                <input type="file" class="form-control" id="file_${fileKey}" name="${fileKey}" 
+                       accept=".xlsx,.csv">
+                <span class="help-block">Accepted formats: .xlsx, .csv (Max size: 10MB). At least one file is required.</span>
+            </div>
+        `;
+    });
+    
+    $('#file-inputs').html(html);
+    $('#file-upload-section').show();
+}
+
+function showRequiredHeaders(data) {
+    let html = '';
+    
+    Object.keys(data).forEach(function(fileKey) {
+        const fileConfig = data[fileKey];
+        html += `<h5>${fileConfig.label}:</h5><ul>`;
+        
+        fileConfig.headers.forEach(function(header) {
+            const required = header.required ? '<span class="text-red">*</span>' : '';
+            html += `<li><strong>${header.header}</strong> (${header.label}) ${required}</li>`;
+        });
+        
+        html += '</ul>';
+    });
+    
+    $('#required-headers-content').html(html);
+    $('#required-headers-section').show();
+}
+
+function resetForm() {
+    // Don't automatically reset if user has selected an import type
+    const selectedImportType = $('#import_type').val();
+    if (selectedImportType) {
+        return false;
+    }
+    
+    $('#file-upload-section').hide();
+    $('#required-headers-section').hide();
+    $('#file-inputs').html('');
+    $('#required-headers-content').html('');
+    $('#import-btn').prop('disabled', true);
+    $('#import_type').val('');
+}
+</script>
+@endpush

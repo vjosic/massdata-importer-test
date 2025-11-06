@@ -1,0 +1,5 @@
+supplier_id,name,contact_person,email,phone,country,city,address
+S001,TechZone,Petar Petrović,petar@techzone.com,063123123,Serbia,Subotica,Korzo 10
+S002,CompNet,,info@compnet,064222222,Serbia,Novi Sad,Bulevar 20
+S003,SmartIT,Marija Lukić,marija@smartit.rs,062999888,Serbia,,Nemanjina 3
+S001,Duplicate Supplier,Someone,dup@example.com,065111111,Serbia,Beograd,Knez Mihailova 7
