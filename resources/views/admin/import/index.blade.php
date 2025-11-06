@@ -29,14 +29,6 @@
                 </div>
             @endif
             
-            <!-- Success Message -->
-            @if (session('success'))
-                <div class="alert alert-success">
-                    <h4><i class="icon fa fa-check"></i> Success!</h4>
-                    {{ session('success') }}
-                </div>
-            @endif
-            
             <form method="POST" action="{{ route('admin.import.upload') }}" enctype="multipart/form-data" id="importForm">
                 @csrf
                 <div class="box-body">
@@ -109,14 +101,8 @@
     border-bottom: 1px solid #45a049;
 }
 
-#required-headers-section .box-body {
-    color: #2e7d32;
-}
-
-#required-headers-section h5 {
-    color: #1976d2;
-    margin-bottom: 10px;
-    margin-top: 15px;
+#required-headers-section .box-title {
+    color: white !important;
     font-weight: bold;
 }
 
@@ -149,93 +135,140 @@ $(document).ready(function() {
             return;
         }
         
-        // Always hide previous sections first
-        $('#file-upload-section').hide();
-        $('#required-headers-section').hide();
-        $('#file-inputs').html('');
-        $('#required-headers-content').html('');
-        $('#import-btn').prop('disabled', true);
-        
-        if (importType) {
-            ajaxInProgress = true;
-            
-            $.get('{{ route("admin.import.headers") }}', { import_type: importType })
-                .done(function(data) {
-                    showFileInputs(data);
-                    showRequiredHeaders(data);
-                    $('#import-btn').prop('disabled', false);
-                })
-                .fail(function(xhr, status, error) {
-                    alert('Error loading import configuration: ' + xhr.responseText);
-                })
-                .always(function() {
-                    ajaxInProgress = false;
-                });
+        if (!importType) {
+            resetForm();
+            return;
         }
+
+        ajaxInProgress = true;
+        
+        $.ajax({
+            url: '{{ route('admin.import.config') }}',
+            method: 'GET',
+            data: { type: importType },
+            success: function(response) {
+                ajaxInProgress = false;
+                
+                if (response.error) {
+                    alert('Error: ' + response.error);
+                    return;
+                }
+                
+                // Show file upload section
+                $('#file-upload-section').show();
+                
+                // Generate file inputs
+                let fileInputsHtml = '';
+                const files = response.config.files;
+                
+                for (const [fileKey, fileConfig] of Object.entries(files)) {
+                    const isRequired = fileConfig.required ? 'required' : '';
+                    const requiredText = fileConfig.required ? ' (Required)' : ' (Optional)';
+                    
+                    fileInputsHtml += `
+                        <div class="form-group">
+                            <label for="${fileKey}">${fileConfig.label}${requiredText}</label>
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="${fileKey}" 
+                                   name="files[${fileKey}]" 
+                                   accept=".csv,.xlsx,.xls"
+                                   ${isRequired}>
+                            <p class="help-block">Accepted formats: CSV, Excel (.xlsx, .xls)</p>
+                        </div>
+                    `;
+                }
+                
+                $('#file-inputs').html(fileInputsHtml);
+                
+                // Show required headers section
+                if (response.config.headers && response.config.headers.length > 0) {
+                    $('#required-headers-section').show();
+                    
+                    let headersHtml = '<ul>';
+                    response.config.headers.forEach(function(header) {
+                        const requiredClass = header.required ? 'text-red' : '';
+                        const requiredText = header.required ? ' (Required)' : ' (Optional)';
+                        headersHtml += `<li class="${requiredClass}"><strong>${header.name}</strong>${requiredText}`;
+                        if (header.description) {
+                            headersHtml += ` - ${header.description}`;
+                        }
+                        headersHtml += '</li>';
+                    });
+                    headersHtml += '</ul>';
+                    
+                    $('#required-headers-content').html(headersHtml);
+                } else {
+                    $('#required-headers-section').hide();
+                }
+                
+                // Enable import button when at least one file is selected
+                updateImportButton();
+                
+                // Add change listener to file inputs
+                $(document).off('change', 'input[type="file"]').on('change', 'input[type="file"]', function() {
+                    updateImportButton();
+                });
+            },
+            error: function(xhr) {
+                ajaxInProgress = false;
+                alert('Error loading import configuration: ' + xhr.responseText);
+            }
+        });
     });
 
     // Form submission validation
-    $('#importForm').submit(function(e) {
-        const fileInputs = $('#file-inputs input[type="file"]');
-        let hasAtLeastOneFile = false;
-        
-        fileInputs.each(function() {
-            if (this.files && this.files.length > 0) {
-                hasAtLeastOneFile = true;
-            }
+    $('#importForm').on('submit', function(e) {
+        const selectedFiles = $('input[type="file"]').filter(function() {
+            return $(this).val() !== '';
         });
         
-        if (!hasAtLeastOneFile) {
+        if (selectedFiles.length === 0) {
             e.preventDefault();
             alert('Please select at least one file to upload.');
             return false;
         }
+        
+        // Show loading state
+        const $btn = $('#import-btn');
+        $btn.prop('disabled', true);
+        $btn.html('<i class="fa fa-spinner fa-spin"></i> Processing...');
     });
 });
 
-function showFileInputs(data) {
-    let html = '';
-    
-    Object.keys(data).forEach(function(fileKey) {
-        const fileConfig = data[fileKey];
-        html += `
-            <div class="form-group">
-                <label for="file_${fileKey}">${fileConfig.label}</label>
-                <input type="file" class="form-control" id="file_${fileKey}" name="${fileKey}" 
-                       accept=".xlsx,.csv">
-                <span class="help-block permanent-help">Accepted formats: .xlsx, .csv (Max size: 10MB). At least one file is required.</span>
-            </div>
-        `;
+function updateImportButton() {
+    const selectedFiles = $('input[type="file"]').filter(function() {
+        return $(this).val() !== '';
     });
     
-    $('#file-inputs').html(html);
-    $('#file-upload-section').show();
-}
-
-function showRequiredHeaders(data) {
-    let html = '';
-    
-    Object.keys(data).forEach(function(fileKey) {
-        const fileConfig = data[fileKey];
-        html += `<h5>${fileConfig.label}:</h5><ul>`;
-        
-        fileConfig.headers.forEach(function(header) {
-            const required = header.required ? '<span class="text-red">*</span>' : '';
-            html += `<li><strong>${header.header}</strong> (${header.label}) ${required}</li>`;
-        });
-        
-        html += '</ul>';
-    });
-    
-    $('#required-headers-content').html(html);
-    $('#required-headers-section').show();
+    if (selectedFiles.length > 0) {
+        $('#import-btn').prop('disabled', false);
+    } else {
+        $('#import-btn').prop('disabled', true);
+    }
 }
 
 function resetForm() {
-    // Reset form to initial state
-    $('#import_type').val('').trigger('change');
+    // Reset form
+    $('#importForm')[0].reset();
     
-    // Clear any error messages
+    // Hide sections
+    $('#file-upload-section').hide();
+    $('#required-headers-section').hide();
+    
+    // Clear file inputs
+    $('#file-inputs').empty();
+    
+    // Clear headers content
+    $('#required-headers-content').empty();
+    
+    // Disable import button
+    $('#import-btn').prop('disabled', true);
+    
+    // Reset import button text
+    $('#import-btn').html('<i class="fa fa-upload"></i> Start Import');
+    
+    // Remove any alert messages
     $('.alert').remove();
     
     // Reset any validation states

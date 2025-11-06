@@ -9,6 +9,7 @@ return [
         'files' => [
             'orders_file' => [
                 'label' => 'Orders File',
+                'required' => true,
 
                 'headers_to_db' => [
                     'order_date' => [
@@ -67,6 +68,7 @@ return [
 
             'customers_file' => [
                 'label' => 'Customer Details File',
+                'required' => true,
 
                 'headers_to_db' => [
                     'customer_id' => [

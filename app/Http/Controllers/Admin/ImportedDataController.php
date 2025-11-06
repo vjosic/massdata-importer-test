@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use App\Models\Audit;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -156,38 +157,56 @@ class ImportedDataController extends Controller
      */
     public function delete(Request $request, $dataset, $id)
     {
-        $importConfigs = config('imports');
-        $config = $importConfigs[$dataset] ?? null;
-        
-        if (!$config) {
-            abort(404, 'Dataset not found');
-        }
-        
-        // Check permission
-        if (!Gate::allows($config['permission_required'])) {
-            abort(403, 'Unauthorized to delete from this dataset');
-        }
-        
-        $tableName = $this->getTableNameFromDataset($dataset);
-        
-        // Find and delete record
-        $deleted = DB::table($tableName)->where('id', $id)->delete();
-        
-        if ($deleted) {
-            // Log audit trail
-            Audit::create([
-                'import_id' => null,
-                'table' => $tableName,
-                'row_pk' => $id,
-                'column' => 'delete_action',
-                'old_value' => 'record_deleted',
-                'new_value' => 'deleted_by_user_' . Auth::id()
+        try {
+            $importConfigs = config('imports');
+            $config = $importConfigs[$dataset] ?? null;
+            
+            if (!$config) {
+                return response()->json(['success' => false, 'message' => 'Dataset not found'], 404);
+            }
+            
+            // Check permission
+            if (!Gate::allows($config['permission_required'])) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized to delete from this dataset'], 403);
+            }
+            
+            $tableName = $this->getTableNameFromDataset($dataset);
+            
+            // Check if record exists before deletion
+            $record = DB::table($tableName)->where('id', $id)->first();
+            if (!$record) {
+                return response()->json(['success' => false, 'message' => 'Record not found'], 404);
+            }
+            
+            // Find and delete record
+            $deleted = DB::table($tableName)->where('id', $id)->delete();
+            
+            if ($deleted) {
+                // Log audit trail
+                Audit::create([
+                    'import_id' => null,
+                    'table' => $tableName,
+                    'row_pk' => $id,
+                    'column' => 'delete_action',
+                    'old_value' => 'record_deleted',
+                    'new_value' => 'deleted_by_user_' . Auth::id()
+                ]);
+                
+                return response()->json(['success' => true, 'message' => 'Record deleted successfully']);
+            }
+            
+            return response()->json(['success' => false, 'message' => 'Failed to delete record'], 500);
+            
+        } catch (\Exception $e) {
+            Log::error('Error deleting record', [
+                'dataset' => $dataset,
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
-            return response()->json(['success' => true, 'message' => 'Record deleted successfully']);
+            return response()->json(['success' => false, 'message' => 'Error occurred while deleting record: ' . $e->getMessage()], 500);
         }
-        
-        return response()->json(['success' => false, 'message' => 'Record not found'], 404);
     }
     
     /**

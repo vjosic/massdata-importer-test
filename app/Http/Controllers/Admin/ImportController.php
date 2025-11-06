@@ -71,6 +71,47 @@ class ImportController extends Controller
     }
 
     /**
+     * Get import configuration for AJAX requests
+     */
+    public function getConfig(Request $request)
+    {
+        $importType = $request->get('type');
+        
+        if (!$importType) {
+            return response()->json(['error' => 'Import type is required'], 400);
+        }
+        
+        $importConfig = config("imports.{$importType}");
+
+        if (!$importConfig || !Gate::allows($importConfig['permission_required'])) {
+            return response()->json(['error' => 'Invalid import type or insufficient permissions'], 403);
+        }
+
+        // Prepare headers for display
+        $headers = [];
+        if (isset($importConfig['files'])) {
+            foreach ($importConfig['files'] as $fileKey => $fileConfig) {
+                if (isset($fileConfig['headers_to_db'])) {
+                    foreach ($fileConfig['headers_to_db'] as $header => $config) {
+                        $headers[] = [
+                            'name' => $header,
+                            'description' => $config['label'] ?? '',
+                            'required' => in_array('required', $config['validation'] ?? [])
+                        ];
+                    }
+                }
+            }
+        }
+
+        return response()->json([
+            'config' => [
+                'files' => $importConfig['files'] ?? [],
+                'headers' => $headers
+            ]
+        ]);
+    }
+
+    /**
      * Handle file upload and start import process
      */
     public function upload(Request $request)
@@ -94,14 +135,23 @@ class ImportController extends Controller
         $hasAtLeastOneFile = false;
         
         foreach ($importConfig['files'] as $fileKey => $fileConfig) {
-            if ($request->hasFile($fileKey)) {
-                $uploadedFiles[$fileKey] = $request->file($fileKey);
+            if ($request->hasFile("files.{$fileKey}")) {
+                $uploadedFiles[$fileKey] = $request->file("files.{$fileKey}");
                 $hasAtLeastOneFile = true;
             }
         }
 
         if (!$hasAtLeastOneFile) {
             return redirect()->back()->withErrors(['files' => 'At least one file is required for this import type.']);
+        }
+
+        // Check if all required files are uploaded
+        foreach ($importConfig['files'] as $fileKey => $fileConfig) {
+            if (isset($fileConfig['required']) && $fileConfig['required'] && !isset($uploadedFiles[$fileKey])) {
+                return redirect()->back()->withErrors([
+                    "files.{$fileKey}" => "The {$fileConfig['label']} is required."
+                ]);
+            }
         }
 
         // 3. Validate file extensions for uploaded files

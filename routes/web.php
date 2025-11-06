@@ -33,6 +33,7 @@ Route::middleware('auth')->group(function () {
         
         // Data Import routes
         Route::get('import', [ImportController::class, 'index'])->name('import.index');
+        Route::get('import/config', [ImportController::class, 'getConfig'])->name('import.config');
         Route::get('import/headers', [ImportController::class, 'getRequiredHeaders'])->name('import.headers');
         Route::post('import/upload', [ImportController::class, 'upload'])->name('import.upload');
         

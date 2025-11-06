@@ -208,8 +208,16 @@ function deleteRecord(dataset, recordId) {
                 alert('Error: ' + response.message);
             }
         })
-        .fail(function() {
-            alert('Error deleting record. Please try again.');
+        .fail(function(xhr, status, error) {
+            let errorMessage = 'Error deleting record. Please try again.';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = 'Error: ' + xhr.responseJSON.message;
+            } else if (xhr.status === 403) {
+                errorMessage = 'Error: You do not have permission to delete this record.';
+            } else if (xhr.status === 404) {
+                errorMessage = 'Error: Record not found.';
+            }
+            alert(errorMessage);
         });
     }
 }
