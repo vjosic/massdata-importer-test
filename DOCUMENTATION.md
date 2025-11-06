@@ -334,12 +334,12 @@ DELETE /admin/data/{type}/{id}     # Delete record
 
 ### Adding New Import Types
 
-1. **Create Model**
+1. **Create Migration**
 ```php
-php artisan make:model NewDataType -m
+php artisan make:migration create_new_data_types_table
 ```
 
-2. **Update Migration**
+2. **Define Table Structure**
 ```php
 Schema::create('new_data_types', function (Blueprint $table) {
     $table->id();
@@ -354,18 +354,36 @@ Add to `config/imports.php`:
 ```php
 'new_data_type' => [
     'label' => 'New Data Type',
-    'model' => App\Models\NewDataType::class,
     'files' => [
-        'main' => [
+        'new_data_types_file' => [
             'label' => 'Main File',
-            'required' => true,
             'headers_to_db' => [
-                'CSV Header' => 'database_field'
+                'field1' => [
+                    'label' => 'Field 1',
+                    'type' => 'string',
+                    'validation' => ['required', 'max:255']
+                ],
+                'field2' => [
+                    'label' => 'Field 2', 
+                    'type' => 'string',
+                    'validation' => ['required', 'email']
+                ]
             ]
         ]
     ]
 ]
 ```
+
+4. **Add Table Mapping**
+Update `ProcessImportJob.php` in `getTableNameFromFileKey()` method:
+```php
+$mapping = [
+    // ... existing mappings ...
+    'new_data_types_file' => 'new_data_types',
+];
+```
+
+**Note:** No Eloquent model is needed! The system uses direct database queries via `DB::table()` for maximum flexibility.
 
 ### Customizing Validation
 Modify validation in `ProcessImportJob.php`:
