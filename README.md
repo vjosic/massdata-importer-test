@@ -1,67 +1,177 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# MassData Importer Test
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Laravel 10 application demonstrating **dynamic data import management** using **AdminLTE 2**, **MySQL**, and **queued background jobs**.
+The project allows configurable CSV/XLSX imports with validation, audit trails, and permission-based access.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🚀 Features
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+* Laravel 10 + AdminLTE 2 frontend layout
+* Authentication (login only)
+* Role & permission management (Spatie package)
+* Dynamic import types loaded from `config/imports.php`
+* Background import execution via Laravel Queues
+* Validation, audit, and error logging for skipped rows
+* Pagination, filtering, and exporting imported datasets
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## ⚙️ Requirements
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+* PHP 8.1+
+* Composer
+* MySQL / MariaDB
+* Node.js (optional, for asset building)
+* Laravel 10
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## 🗄️ Database Setup
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Run MySQL and create the database manually:
 
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-
-
-## Database
-```
+```sql
 CREATE DATABASE massdata_import CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 EXIT;
-```# massdata-importer-test
-# massdata-importer-test
+```
+
+Then update `.env`:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=massdata_import
+DB_USERNAME=root
+DB_PASSWORD=vlado10
+```
+
+Run migrations and seeders:
+
+```bash
+php artisan migrate
+php artisan db:seed
+```
+
+---
+
+## 🧩 Configuration
+
+All import types are defined in:
+
+```
+config/imports.php
+```
+
+Each import definition contains:
+
+* `label` → visible name in the UI
+* `permission_required` → determines visibility
+* `files` → file definitions for each importable dataset
+* `headers_to_db` → column mapping, type conversion, and validation rules
+* `update_or_create` → unique keys for update detection
+
+To add a new import type:
+
+1. Create its DB table(s) manually with migrations.
+2. Add a new section in `config/imports.php`.
+3. Create the required permission (e.g. `import-products`).
+
+The UI and backend logic will adapt automatically.
+
+---
+
+## 📂 Test Data
+
+Test CSV files are located in `/storage/test_imports/`.
+They cover multiple validation scenarios:
+
+* **Orders** – validates `in`, `exists`, and `required` rules
+* **Inventory** – tests numeric and date validation
+* **Suppliers** – tests `unique` and `email` validation
+
+Each import job logs skipped rows and audit entries for updates.
+
+---
+
+## 🧠 Validation Rules Supported
+
+| Rule                  | Description                              |
+| --------------------- | ---------------------------------------- |
+| `required`            | Value cannot be empty                    |
+| `unique:table,column` | Must not exist in specified table/column |
+| `exists:table,column` | Must exist in specified table/column     |
+| `in:val1,val2,...`    | Must be one of defined values            |
+| `email`               | Must be valid email format               |
+| `nullable`            | Can be empty                             |
+| `min:0`               | Must be greater than or equal to 0       |
+
+Rows that fail validation are skipped and logged in `import_logs` with details:
+
+* Import type
+* Row number
+* Column name
+* Invalid value
+* Validation message
+
+---
+
+## 🧾 Audit System
+
+Whenever an existing row is updated (based on `update_or_create` keys):
+
+* The change is recorded in `import_audits` table
+* Logged with:
+
+  * Import type
+  * Row ID
+  * Column name
+  * Old and new values
+
+---
+
+## 🖥️ Running the Project
+
+```bash
+composer install
+php artisan migrate --seed
+php artisan serve
+```
+
+Visit: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+
+---
+
+## 🧱 AdminLTE 2 Assets
+
+Static files are located in `public/adminlte/`:
+
+```
+dist/
+plugins/
+favicon.ico
+```
+
+---
+
+## 📬 Queue Worker
+
+Imports are processed asynchronously:
+
+```bash
+php artisan queue:work
+```
+
+If an import fails, an email notification is sent (currently logged via `MAIL_MAILER=log`).
+
+---
+
+## 🧑‍💻 Author
+
+**Vladimir Josić**
+Laravel Developer / PHP Engineer
+
+---
+
+*Project created as part of the MassData OOP & Laravel import test.*

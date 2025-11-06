@@ -42,7 +42,11 @@ return [
                     'so_num' => [
                         'label' => 'SO#',
                         'type' => 'string',
-                        'validation' => ['required'],
+                        'validation' => ['required', 'unique' => [
+                            'table' => 'orders',
+                            'column' => 'so_num',
+                            'ignore_on_update' => true
+                        ]],
                     ],
                     'cost' => [
                         'label' => 'Cost',
@@ -71,7 +75,11 @@ return [
                     'customer_id' => [
                         'label' => 'Customer ID',
                         'type' => 'string',
-                        'validation' => ['required'],
+                        'validation' => ['required', 'unique' => [
+                            'table' => 'customers',
+                            'column' => 'customer_id',
+                            'ignore_on_update' => true
+                        ]],
                     ],
                     'customer_name' => [
                         'label' => 'Customer Name',
@@ -81,7 +89,11 @@ return [
                     'email' => [
                         'label' => 'Email Address',
                         'type' => 'email',
-                        'validation' => ['required', 'email'],
+                        'validation' => ['required', 'email', 'unique' => [
+                            'table' => 'customers',
+                            'column' => 'email',
+                            'ignore_on_update' => true
+                        ]],
                     ],
                     'phone' => [
                         'label' => 'Phone Number',

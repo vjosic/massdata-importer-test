@@ -111,11 +111,32 @@ class ProcessImportJob implements ShouldQueue
                 try {
                     $mappedData = $this->mapRowToDatabase($row, $headerMapping, $fileConfig['headers_to_db']);
                     
+                    // Validate row data
+                    $validationResult = $this->validateRowData($mappedData, $fileConfig['headers_to_db'], $rowIndex + 2, $fileConfig['update_or_create'] ?? []);
+                    
+                    if (!$validationResult['valid']) {
+                        // Log validation errors
+                        foreach ($validationResult['errors'] as $error) {
+                            DB::table('import_errors')->insert([
+                                'import_id' => $this->importRecord->id,
+                                'row_number' => $rowIndex + 2,
+                                'column' => $error['column'],
+                                'value' => $error['value'],
+                                'message' => $error['message'],
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                        }
+                        $errors++;
+                        continue; // Skip this row
+                    }
+                    
                     // Determine target table based on file key
                     $tableName = $this->getTableNameFromFileKey($fileKey);
                     
                     // Use update or create based on config
-                    $this->upsertRecord($tableName, $mappedData, $fileConfig['update_or_create']);
+                    $updateOrCreateKeys = $fileConfig['update_or_create'] ?? [];
+                    $this->upsertRecord($tableName, $mappedData, $updateOrCreateKeys, $rowIndex + 2);
                     
                     $processed++;
                     
@@ -167,7 +188,8 @@ class ProcessImportJob implements ShouldQueue
     private function readCsvFile($filePath)
     {
         $data = [];
-        $handle = fopen(Storage::path($filePath), 'r');
+        $fullPath = Storage::disk('local')->path($filePath);
+        $handle = fopen($fullPath, 'r');
         
         if ($handle === false) {
             throw new Exception("Cannot read CSV file: {$filePath}");
@@ -189,7 +211,8 @@ class ProcessImportJob implements ShouldQueue
         $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader('Xlsx');
         $reader->setReadDataOnly(true);
         
-        $spreadsheet = $reader->load(Storage::path($filePath));
+        $fullPath = Storage::disk('local')->path($filePath);
+        $spreadsheet = $reader->load($fullPath);
         $worksheet = $spreadsheet->getActiveSheet();
         
         $data = [];
@@ -288,7 +311,7 @@ class ProcessImportJob implements ShouldQueue
     /**
      * Upsert record using update_or_create logic
      */
-    private function upsertRecord($tableName, $data, $updateOrCreateKeys)
+    private function upsertRecord($tableName, $data, $updateOrCreateKeys, $rowNumber)
     {
         $whereClause = [];
         foreach ($updateOrCreateKeys as $key) {
@@ -298,6 +321,8 @@ class ProcessImportJob implements ShouldQueue
         }
         
         $recordId = null;
+        $isUpdate = false;
+        $oldRecord = null;
         
         if (empty($whereClause)) {
             // If no keys for update_or_create, just insert
@@ -305,31 +330,213 @@ class ProcessImportJob implements ShouldQueue
                 'created_at' => now(),
                 'updated_at' => now()
             ]));
-        } else {
-            // Use updateOrInsert
-            DB::table($tableName)->updateOrInsert(
-                $whereClause,
-                array_merge($data, [
-                    'updated_at' => now(),
-                    'created_at' => now()
-                ])
-            );
             
-            // Get record ID
-            $record = DB::table($tableName)->where($whereClause)->first();
-            $recordId = $record ? $record->id : 0;
+            // Log creation audit
+            DB::table('audits')->insert([
+                'import_id' => $this->importRecord->id,
+                'table' => $tableName,
+                'row_pk' => $recordId,
+                'column' => 'created',
+                'old_value' => null,
+                'new_value' => json_encode($data),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            
+        } else {
+            // Check if record exists
+            $existingRecord = DB::table($tableName)->where($whereClause)->first();
+            
+            if ($existingRecord) {
+                $isUpdate = true;
+                $oldRecord = (array) $existingRecord;
+                $recordId = $existingRecord->id;
+                
+                // Update existing record
+                DB::table($tableName)->where($whereClause)->update(array_merge($data, [
+                    'updated_at' => now()
+                ]));
+                
+                // Log each changed field
+                foreach ($data as $column => $newValue) {
+                    $oldValue = $oldRecord[$column] ?? null;
+                    
+                    // Only log if value actually changed
+                    if ($oldValue != $newValue) {
+                        DB::table('audits')->insert([
+                            'import_id' => $this->importRecord->id,
+                            'table' => $tableName,
+                            'row_pk' => $recordId,
+                            'column' => $column,
+                            'old_value' => $oldValue,
+                            'new_value' => $newValue,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
+                }
+                
+            } else {
+                // Insert new record
+                $recordId = DB::table($tableName)->insertGetId(array_merge($data, [
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]));
+                
+                // Log creation audit
+                DB::table('audits')->insert([
+                    'import_id' => $this->importRecord->id,
+                    'table' => $tableName,
+                    'row_pk' => $recordId,
+                    'column' => 'created',
+                    'old_value' => null,
+                    'new_value' => json_encode($data),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
         }
         
-        // Log to audit table
-        DB::table('audits')->insert([
-            'import_id' => $this->importRecord->id,
-            'table' => $tableName,
-            'row_pk' => $recordId,
-            'column' => 'import_action',
-            'old_value' => null,
-            'new_value' => json_encode($data),
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
+        return $recordId;
+    }
+
+    /**
+     * Validate row data according to configuration rules
+     */
+    private function validateRowData($data, $configHeaders, $rowNumber, $updateOrCreateKeys = [])
+    {
+        $errors = [];
+        $valid = true;
+
+        foreach ($configHeaders as $column => $config) {
+            $value = $data[$column] ?? null;
+            $validation = $config['validation'] ?? [];
+
+            foreach ($validation as $ruleKey => $ruleValue) {
+                // Handle simple rules (e.g., 'required')
+                if (is_numeric($ruleKey)) {
+                    $rule = $ruleValue;
+                    $ruleConfig = null;
+                } else {
+                    // Handle complex rules (e.g., 'in' => [...])
+                    $rule = $ruleKey;
+                    $ruleConfig = $ruleValue;
+                }
+
+                $validationResult = $this->validateField($value, $rule, $ruleConfig, $column, $data, $updateOrCreateKeys);
+                
+                if (!$validationResult['valid']) {
+                    $errors[] = [
+                        'column' => $column,
+                        'value' => $value,
+                        'message' => $validationResult['message']
+                    ];
+                    $valid = false;
+                }
+            }
+        }
+
+        return [
+            'valid' => $valid,
+            'errors' => $errors
+        ];
+    }
+
+    /**
+     * Validate individual field based on rule
+     */
+    private function validateField($value, $rule, $ruleConfig, $column, $allData, $updateOrCreateKeys = [])
+    {
+        switch ($rule) {
+            case 'required':
+                if (empty($value) && $value !== '0') {
+                    return [
+                        'valid' => false,
+                        'message' => "The {$column} field is required."
+                    ];
+                }
+                break;
+
+            case 'unique':
+                if (!empty($value) && $ruleConfig) {
+                    $table = $ruleConfig['table'];
+                    $tableColumn = $ruleConfig['column'];
+                    $ignoreOnUpdate = $ruleConfig['ignore_on_update'] ?? false;
+                    
+                    $query = DB::table($table)->where($tableColumn, $value);
+                    
+                    // If this is an update operation and ignore_on_update is true
+                    if ($ignoreOnUpdate && !empty($updateOrCreateKeys)) {
+                        $whereClause = [];
+                        foreach ($updateOrCreateKeys as $key) {
+                            if (isset($allData[$key])) {
+                                $whereClause[$key] = $allData[$key];
+                            }
+                        }
+                        
+                        // Check if record exists with update keys
+                        if (!empty($whereClause)) {
+                            $existingRecord = DB::table($table)->where($whereClause)->first();
+                            if ($existingRecord) {
+                                // If updating existing record, exclude it from unique check
+                                $query->where('id', '!=', $existingRecord->id);
+                            }
+                        }
+                    }
+                    
+                    if ($query->exists()) {
+                        return [
+                            'valid' => false,
+                            'message' => "The {$column} value '{$value}' already exists."
+                        ];
+                    }
+                }
+                break;
+
+            case 'exists':
+                if (!empty($value) && $ruleConfig) {
+                    $table = $ruleConfig['table'];
+                    $tableColumn = $ruleConfig['column'];
+                    
+                    if (!DB::table($table)->where($tableColumn, $value)->exists()) {
+                        return [
+                            'valid' => false,
+                            'message' => "The {$column} value '{$value}' does not exist in {$table}.{$tableColumn}."
+                        ];
+                    }
+                }
+                break;
+
+            case 'in':
+                if (!empty($value) && is_array($ruleConfig)) {
+                    if (!in_array($value, $ruleConfig)) {
+                        $allowedValues = implode(', ', $ruleConfig);
+                        return [
+                            'valid' => false,
+                            'message' => "The {$column} value '{$value}' is not in allowed values: {$allowedValues}."
+                        ];
+                    }
+                }
+                break;
+
+            case 'email':
+                if (!empty($value) && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                    return [
+                        'valid' => false,
+                        'message' => "The {$column} field must be a valid email address."
+                    ];
+                }
+                break;
+
+            case 'nullable':
+                // Always valid for nullable fields
+                break;
+
+            default:
+                // Unknown validation rule - skip
+                break;
+        }
+
+        return ['valid' => true, 'message' => ''];
     }
 }
