@@ -52,13 +52,15 @@ class TestUserSeeder extends Seeder
 
         $this->command->info('Test users created successfully!');
         $this->command->line('');
-        $this->command->info('🔹 Test User (Editor):');
+        $this->command->info('   Test User (Editor):');
         $this->command->info('   Email: test@example.com');
+        $this->command->info('   Username: test');
         $this->command->info('   Password: password123');
         $this->command->info('   Role: Editor (can import all data types)');
         $this->command->line('');
-        $this->command->info('🔹 Supplier User (Supplier Manager):');
+        $this->command->info('   Supplier User (Supplier Manager):');
         $this->command->info('   Email: supplier@example.com');
+        $this->command->info('   Username: supplier');
         $this->command->info('   Password: password123');
         $this->command->info('   Role: Supplier Manager (suppliers only)');
     }

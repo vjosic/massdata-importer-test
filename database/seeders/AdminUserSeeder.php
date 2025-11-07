@@ -32,6 +32,7 @@ class AdminUserSeeder extends Seeder
         }
 
         $this->command->info('Admin user created/updated successfully!');
+        $this->command->info('Admin: admin');
         $this->command->info('Email: admin@example.com');
         $this->command->info('Password: password123');
         $this->command->info('Role: Admin (all permissions)');

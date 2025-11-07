@@ -19,9 +19,7 @@ class DatabaseSetup extends Command
                             {--force : Force setup without confirmation}
                             {--skip-db : Skip database creation}
                             {--skip-migrate : Skip migrations}
-                            {--skip-seed : Skip seeding}
-                            {--skip-permissions : Skip permission seeding}
-                            {--skip-admin : Skip admin user seeding}';
+                            {--skip-seed : Skip seeding}';
 
     /**
      * The console command description.
@@ -71,38 +69,33 @@ class DatabaseSetup extends Command
                 $this->warn('  Skipping migrations');
             }
 
-            // Step 3: Seed permissions
-            if (!$this->option('skip-seed') && !$this->option('skip-permissions')) {
-                $this->seedPermissions();
+            // Step 3: Seed database (permissions, roles, and users)
+            if (!$this->option('skip-seed')) {
+                $this->seedDatabase();
             } else {
-                $this->warn('  Skipping permission seeding');
-            }
-
-            // Step 4: Seed admin user
-            if (!$this->option('skip-seed') && !$this->option('skip-admin')) {
-                $this->seedAdminUser();
-                $this->seedTestUser();
-            } else {
-                $this->warn('  Skipping admin user seeding');
+                $this->warn('  Skipping database seeding');
             }
 
             $this->line('');
-            $this->info('✅ Database setup completed successfully!');
+            $this->info(' Database setup completed successfully!');
             $this->line('');
-            $this->info('🔐 Available User Accounts:');
+            $this->info(' Available User Accounts:');
             $this->line('');
-            $this->info('🟢 Administrator (Full Access):');
+            $this->info('  Administrator (Full Access):');
             $this->info('   Email: admin@example.com');
+            $this->info('   Username: admin');
             $this->info('   Password: password123');
             $this->info('   Role: Admin (all permissions)');
             $this->line('');
-            $this->info('🟡 Test User (Editor - All Imports):');
+            $this->info('  Test User (Editor - All Imports):');
+            $this->info('   Username: test');            
             $this->info('   Email: test@example.com');
             $this->info('   Password: password123');
             $this->info('   Role: Editor (import all data types + view/export)');
             $this->line('');
-            $this->info('🟠 Supplier Manager (Limited Access):');
+            $this->info('   Supplier Manager (Limited Access):');
             $this->info('   Email: supplier@example.com');
+            $this->info('   Username: supplier');
             $this->info('   Password: password123');
             $this->info('   Role: Supplier Manager (suppliers only)');
 
@@ -169,74 +162,23 @@ class DatabaseSetup extends Command
     }
 
     /**
-     * Seed permissions and roles
+     * Seed database with permissions, roles, and users
      */
-    private function seedPermissions()
+    private function seedDatabase()
     {
-        $this->info('Creating permissions and roles...');
+        $this->info('Seeding database (permissions, roles, and users)...');
         
-        $exitCode = Artisan::call('db:seed', [
-            '--class' => 'PermissionSeeder',
-            '--force' => true
-        ]);
+        $exitCode = Artisan::call('db:seed', ['--force' => true]);
         
         if ($exitCode === 0) {
-            $this->info('Permissions and roles seeded successfully');
+            $this->info('Database seeded successfully');
             
             // Show seeder output if verbose
             if ($this->getOutput()->isVerbose()) {
                 $this->line(Artisan::output());
             }
         } else {
-            throw new Exception('Permission seeding failed');
-        }
-    }
-
-    /**
-     * Seed admin user
-     */
-    private function seedAdminUser()
-    {
-        $this->info('Creating admin user...');
-        
-        $exitCode = Artisan::call('db:seed', [
-            '--class' => 'AdminUserSeeder',
-            '--force' => true
-        ]);
-        
-        if ($exitCode === 0) {
-            $this->info('Admin user seeded successfully');
-            
-            // Show seeder output if verbose
-            if ($this->getOutput()->isVerbose()) {
-                $this->line(Artisan::output());
-            }
-        } else {
-            throw new Exception('Admin user seeding failed');
-        }
-    }
-
-    /**
-     * Seed test user
-     */
-    private function seedTestUser()
-    {
-        $this->info('Creating test user...');
-        
-        $exitCode = Artisan::call('db:seed', [
-            '--class' => 'TestUserSeeder',
-            '--force' => true
-        ]);
-        
-        if ($exitCode === 0) {
-            $this->info('Test user seeded successfully');
-            
-            // Show seeder output if verbose
-            if ($this->getOutput()->isVerbose()) {
-                $this->line(Artisan::output());
-            }
-        } else {
-            throw new Exception('Test user seeding failed');
+            throw new Exception('Database seeding failed');
         }
     }
 }

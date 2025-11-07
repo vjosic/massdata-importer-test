@@ -6,8 +6,6 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 
 class PermissionSeeder extends Seeder
 {
@@ -67,22 +65,7 @@ class PermissionSeeder extends Seeder
             'export-data',
         ]);
 
-        // Create admin user if doesn't exist and assign admin role
-        $adminUser = User::firstOrCreate(
-            ['email' => 'admin@example.com'],
-            [
-                'name' => 'Administrator',
-                'password' => Hash::make('password123'),
-            ]
-        );
-
-        // Assign admin role to admin user
-        if (!$adminUser->hasRole('admin')) {
-            $adminUser->assignRole('admin');
-        }
-
         $this->command->info('Permissions and roles created successfully!');
-        $this->command->info('Admin user created/updated with admin role');
         $this->command->line('');
         $this->command->info('Roles and their permissions:');
         $this->command->line('');
