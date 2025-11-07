@@ -145,15 +145,6 @@ class ImportController extends Controller
             return redirect()->back()->withErrors(['files' => 'At least one file is required for this import type.']);
         }
 
-        // Check if all required files are uploaded
-        foreach ($importConfig['files'] as $fileKey => $fileConfig) {
-            if (isset($fileConfig['required']) && $fileConfig['required'] && !isset($uploadedFiles[$fileKey])) {
-                return redirect()->back()->withErrors([
-                    "files.{$fileKey}" => "The {$fileConfig['label']} is required."
-                ]);
-            }
-        }
-
         // 3. Validate file extensions for uploaded files
         foreach ($uploadedFiles as $fileKey => $file) {
             $allowedExtensions = ['xlsx', 'csv'];
