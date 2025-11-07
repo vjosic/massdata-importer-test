@@ -26,7 +26,7 @@ class TestUserSeeder extends Seeder
         $testUser = User::firstOrCreate(
             ['email' => 'test@example.com'],
             [
-                'name' => 'Test User',
+                'name' => 'test',
                 'password' => Hash::make('password123'),
             ]
         );
@@ -40,7 +40,7 @@ class TestUserSeeder extends Seeder
         $supplierUser = User::firstOrCreate(
             ['email' => 'supplier@example.com'],
             [
-                'name' => 'Supplier Manager',
+                'name' => 'supplier',
                 'password' => Hash::make('password123'),
             ]
         );
