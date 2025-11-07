@@ -406,21 +406,29 @@ return [
 - `suppliers` - Supplier information
 - `tracking` - Shipment tracking
 
-## API Endpoints
+## Web Routes
 
 ### Import Management
 ```php
-GET    /admin/imports              # List all imports
-GET    /admin/imports/{id}         # View import details
-POST   /admin/imports/{id}/retry   # Retry failed import
+GET    /admin/imports              # List all imports (web page)
+GET    /admin/imports/{id}         # View import details (web page)
+POST   /admin/imports/{id}/retry   # Retry failed import (form submission)
 ```
 
 ### Data Management
 ```php
-GET    /admin/data/{type}          # View dataset
-POST   /admin/data/{type}/export   # Export to Excel
-DELETE /admin/data/{type}/{id}     # Delete record
+GET    /admin/data/{type}          # View dataset (web page)
+GET    /admin/data/{type}/export   # Export to Excel (download)
+DELETE /admin/data/{type}/{id}     # Delete record (AJAX)
 ```
+
+### AJAX Endpoints (for web interface)
+```php
+GET    /admin/import/config        # Get import configuration (JSON)
+GET    /admin/import/headers       # Get required headers (JSON)
+```
+
+> **Note**: This application uses traditional web routes with server-side rendering. It does not provide REST API endpoints for external integration.
 
 ## Customization
 
