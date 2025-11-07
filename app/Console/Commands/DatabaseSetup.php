@@ -19,14 +19,16 @@ class DatabaseSetup extends Command
                             {--force : Force setup without confirmation}
                             {--skip-db : Skip database creation}
                             {--skip-migrate : Skip migrations}
-                            {--skip-seed : Skip seeding}';
+                            {--skip-seed : Skip seeding}
+                            {--skip-permissions : Skip permission seeding}
+                            {--skip-admin : Skip admin user seeding}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Complete database setup: create database, run migrations, and seed admin user';
+    protected $description = 'Complete database setup: create database, run migrations, seed permissions and admin user';
 
     /**
      * Execute the console command.
@@ -69,19 +71,33 @@ class DatabaseSetup extends Command
                 $this->warn('  Skipping migrations');
             }
 
-            // Step 3: Seed admin user
-            if (!$this->option('skip-seed')) {
-                $this->seedAdminUser();
+            // Step 3: Seed permissions
+            if (!$this->option('skip-seed') && !$this->option('skip-permissions')) {
+                $this->seedPermissions();
             } else {
-                $this->warn(' Skipping seeding');
+                $this->warn('  Skipping permission seeding');
+            }
+
+            // Step 4: Seed admin user
+            if (!$this->option('skip-seed') && !$this->option('skip-admin')) {
+                $this->seedAdminUser();
+                $this->seedTestUser();
+            } else {
+                $this->warn('  Skipping admin user seeding');
             }
 
             $this->line('');
             $this->info('Database setup completed successfully!');
             $this->line('');
             $this->info('You can now login with:');
-            $this->info('Email: admin@example.com');
-            $this->info('Password: password');
+            $this->line('');
+            $this->info('Admin User (Full Access):');
+            $this->info('  Email: admin@example.com');
+            $this->info('  Password: password123');
+            $this->line('');
+            $this->info('Test User (Suppliers Import Only):');
+            $this->info('  Email: test@example.com');
+            $this->info('  Password: password123');
 
             return 0;
 
@@ -146,6 +162,30 @@ class DatabaseSetup extends Command
     }
 
     /**
+     * Seed permissions and roles
+     */
+    private function seedPermissions()
+    {
+        $this->info('Creating permissions and roles...');
+        
+        $exitCode = Artisan::call('db:seed', [
+            '--class' => 'PermissionSeeder',
+            '--force' => true
+        ]);
+        
+        if ($exitCode === 0) {
+            $this->info('Permissions and roles seeded successfully');
+            
+            // Show seeder output if verbose
+            if ($this->getOutput()->isVerbose()) {
+                $this->line(Artisan::output());
+            }
+        } else {
+            throw new Exception('Permission seeding failed');
+        }
+    }
+
+    /**
      * Seed admin user
      */
     private function seedAdminUser()
@@ -165,7 +205,31 @@ class DatabaseSetup extends Command
                 $this->line(Artisan::output());
             }
         } else {
-            throw new Exception('Seeding failed');
+            throw new Exception('Admin user seeding failed');
+        }
+    }
+
+    /**
+     * Seed test user
+     */
+    private function seedTestUser()
+    {
+        $this->info('Creating test user...');
+        
+        $exitCode = Artisan::call('db:seed', [
+            '--class' => 'TestUserSeeder',
+            '--force' => true
+        ]);
+        
+        if ($exitCode === 0) {
+            $this->info('Test user seeded successfully');
+            
+            // Show seeder output if verbose
+            if ($this->getOutput()->isVerbose()) {
+                $this->line(Artisan::output());
+            }
+        } else {
+            throw new Exception('Test user seeding failed');
         }
     }
 }

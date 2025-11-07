@@ -134,9 +134,19 @@ php artisan serve
 
 ## Usage Guide
 
-### First Login
+### Login Credentials
 - **URL**: `http://localhost:8000/admin/login`
-- **Default Admin**: `admin@example.com` / `password`
+
+#### Default Users (Created by `php artisan db:setup`)
+- **Admin User** (Full Access):
+  - Email: `admin@example.com`
+  - Password: `password123`
+  - Role: Admin (all permissions)
+
+- **Test User** (Suppliers Import Only):
+  - Email: `test@example.com`
+  - Password: `password123`
+  - Role: supplier-manager (import-suppliers permission only)
 
 ### User Management
 
@@ -144,12 +154,13 @@ php artisan serve
 1. Navigate to **Users** in sidebar
 2. Click **Add New User**
 3. Fill required fields: Name, Email, Password
-4. Assign role: Admin or Editor
+4. Assign role: Admin, Editor, or supplier-manager
 5. Save user
 
 #### Managing Permissions
 - **Admin Role**: Full access to all features
 - **Editor Role**: Can import and view data, cannot manage users
+- **supplier-manager Role**: Can only import suppliers data
 
 ### Data Import Process
 
