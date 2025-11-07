@@ -1,5 +1,39 @@
 # Mass Data Importer - Complete Documentation
 
+## 🚀 Quick Start
+
+**Get up and running in 2 minutes:**
+
+```bash
+# 1. Clone and install
+git clone <repository>
+cd massdata-importer-test
+composer install
+
+# 2. Setup environment  
+cp .env.example .env
+php artisan key:generate
+
+# 3. Configure database in .env
+DB_CONNECTION=mysql
+DB_DATABASE=massdata_import
+DB_USERNAME=your_username  
+DB_PASSWORD=your_password
+
+# 4. Complete setup
+php artisan db:setup
+
+# 5. Start server & queue worker
+php artisan serve &
+php artisan queue:work
+```
+
+**Login:** `http://127.0.0.1:8000/login`
+- **Admin**: `admin@example.com` / `password123` 
+- **Test**: `test@example.com` / `password123`
+
+---
+
 ## Overview
 Complete Laravel 12 application with AdminLTE 2 interface for mass data import and management. Features comprehensive data visualization, import tracking, user management with role-based permissions, audit trails, and advanced multi-table dataset support.
 
@@ -82,8 +116,20 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-3. **Database Configuration**
-Edit `.env` file:
+3. **Configure Environment Variables**
+Edit `.env` file with your settings:
+
+**Basic Application Settings:**
+```env
+APP_NAME="Mass Data Importer"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://127.0.0.1:8000
+```
+
+> **Note**: `APP_URL` should match your server address. When using `php artisan serve`, Laravel typically starts on `http://127.0.0.1:8000` or `http://localhost:8000`. Update this URL if you're using a different host, port, or domain.
+
+**Database Configuration:**
 ```env
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -91,8 +137,40 @@ DB_PORT=3306
 DB_DATABASE=massdata_import
 DB_USERNAME=your_username
 DB_PASSWORD=your_password
+```
 
+**Queue Configuration (Required for background imports):**
+```env
 QUEUE_CONNECTION=database
+```
+
+**Email Configuration (Choose one):**
+
+*For Development/Testing (emails saved to log file):*
+```env
+MAIL_MAILER=log
+MAIL_FROM_ADDRESS="noreply@massdata-importer.com"
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+*For Production with Gmail SMTP:*
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-gmail-app-password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=your-email@gmail.com
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+**Import System Settings (Optional):**
+```env
+IMPORT_MAX_FILE_SIZE=10485760        # 10MB
+IMPORT_MAX_PROCESSING_TIME=300       # 5 minutes
+IMPORT_BATCH_SIZE=1000               # Rows per batch
+IMPORT_ERROR_NOTIFICATIONS=true      # Enable email notifications
 ```
 
 4. **Database Setup**
@@ -129,13 +207,22 @@ php artisan queue:work
 
 6. **Start Development Server**
 ```bash
+# Default server (usually http://127.0.0.1:8000)
 php artisan serve
+
+# Custom host and port
+php artisan serve --host=0.0.0.0 --port=8080
+
+# Custom host only (port 8000)
+php artisan serve --host=192.168.1.100
 ```
+
+> **Important**: Update `APP_URL` in your `.env` file to match the actual server URL shown when you start the server.
 
 ## Usage Guide
 
 ### Login Credentials
-- **URL**: `http://localhost:8000/admin/login`
+- **URL**: `http://127.0.0.1:8000/login` (or your configured APP_URL + /login)
 
 #### Default Users (Created by `php artisan db:setup`)
 - **Admin User** (Full Access):
