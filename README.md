@@ -530,6 +530,54 @@ php artisan import:cleanup --days=14
 php artisan import:cleanup --days=1 --status=all
 ```
 
+### Testing Import Error Notifications
+
+The system includes Laravel Event/Listener for email notifications when import errors occur.
+
+#### Test Commands:
+
+**Local Testing (Using Log Driver)**:
+```bash
+# Test with default admin user (ID: 1)
+php artisan test:import-error-local
+
+# Test with specific user
+php artisan test:import-error-local --user-id=2
+
+# Check the email content in logs
+tail -f storage/logs/laravel.log | grep -A 20 "Import Error Notification"
+```
+
+**SMTP Testing (Requires Mail Configuration)**:
+```bash
+# Test with real email sending
+php artisan test:import-error-notification --user-id=1
+
+# Test with specific import record
+php artisan test:import-error-notification --user-id=1 --import-id=5
+```
+
+#### Mail Configuration for Testing:
+```env
+# For local testing (emails saved to log)
+MAIL_MAILER=log
+
+# For real email testing
+MAIL_MAILER=smtp
+MAIL_HOST=your-smtp-server.com
+MAIL_PORT=587
+MAIL_USERNAME=your-email@example.com
+MAIL_PASSWORD=your-app-password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=your-email@example.com
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+#### Event/Listener Structure:
+- **Event**: `App\Events\ImportErrorOccurred`
+- **Listener**: `App\Listeners\SendImportErrorNotification`
+- **Trigger**: Automatically fired when import fails in `ProcessImportJob`
+
 ### Monitoring
 - Monitor queue job failures
 - Track import success rates

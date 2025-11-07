@@ -10,11 +10,6 @@ use Illuminate\Support\Facades\Log;
 
 class ImportController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth');
-    }
-
     /**
      * Display the import page
      */
