@@ -165,13 +165,7 @@ MAIL_FROM_ADDRESS=your-email@gmail.com
 MAIL_FROM_NAME="${APP_NAME}"
 ```
 
-**Import System Settings (Optional):**
-```env
-IMPORT_MAX_FILE_SIZE=10485760        # 10MB
-IMPORT_MAX_PROCESSING_TIME=300       # 5 minutes
-IMPORT_BATCH_SIZE=1000               # Rows per batch
-IMPORT_ERROR_NOTIFICATIONS=true      # Enable email notifications
-```
+
 
 4. **Database Setup**
 ```bash
