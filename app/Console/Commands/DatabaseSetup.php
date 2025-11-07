@@ -87,17 +87,24 @@ class DatabaseSetup extends Command
             }
 
             $this->line('');
-            $this->info('Database setup completed successfully!');
+            $this->info('✅ Database setup completed successfully!');
             $this->line('');
-            $this->info('You can now login with:');
+            $this->info('🔐 Available User Accounts:');
             $this->line('');
-            $this->info('Admin User (Full Access):');
-            $this->info('  Email: admin@example.com');
-            $this->info('  Password: password123');
+            $this->info('🟢 Administrator (Full Access):');
+            $this->info('   Email: admin@example.com');
+            $this->info('   Password: password123');
+            $this->info('   Role: Admin (all permissions)');
             $this->line('');
-            $this->info('Test User (Suppliers Import Only):');
-            $this->info('  Email: test@example.com');
-            $this->info('  Password: password123');
+            $this->info('🟡 Test User (Editor - All Imports):');
+            $this->info('   Email: test@example.com');
+            $this->info('   Password: password123');
+            $this->info('   Role: Editor (import all data types + view/export)');
+            $this->line('');
+            $this->info('🟠 Supplier Manager (Limited Access):');
+            $this->info('   Email: supplier@example.com');
+            $this->info('   Password: password123');
+            $this->info('   Role: Supplier Manager (suppliers only)');
 
             return 0;
 

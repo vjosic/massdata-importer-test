@@ -16,18 +16,13 @@ class TestUserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create supplier role if it doesn't exist
+        // Create editor role if it doesn't exist (will be created by PermissionSeeder)
+        $editorRole = Role::firstOrCreate(['name' => 'editor']);
+        
+        // Create supplier manager role if needed  
         $supplierRole = Role::firstOrCreate(['name' => 'supplier-manager']);
 
-        // Ensure import-suppliers permission exists
-        $importSuppliersPermission = Permission::firstOrCreate(['name' => 'import-suppliers']);
-
-        // Assign permission to role
-        if (!$supplierRole->hasPermissionTo('import-suppliers')) {
-            $supplierRole->givePermissionTo('import-suppliers');
-        }
-
-        // Create test user
+        // Create test user with editor role (more permissions)
         $testUser = User::firstOrCreate(
             ['email' => 'test@example.com'],
             [
@@ -36,15 +31,35 @@ class TestUserSeeder extends Seeder
             ]
         );
 
-        // Assign role to user
-        if (!$testUser->hasRole('supplier-manager')) {
-            $testUser->assignRole('supplier-manager');
+        // Assign editor role to test user (can import all data types)
+        if (!$testUser->hasRole('editor')) {
+            $testUser->assignRole('editor');
         }
 
-        $this->command->info('Test user created:');
-        $this->command->info('Name: Test User');
-        $this->command->info('Email: test@example.com');
-        $this->command->info('Password: password123');
-        $this->command->info('Role: supplier-manager (can import suppliers only)');
+        // Create supplier-specific user
+        $supplierUser = User::firstOrCreate(
+            ['email' => 'supplier@example.com'],
+            [
+                'name' => 'Supplier Manager',
+                'password' => Hash::make('password123'),
+            ]
+        );
+
+        // Assign supplier-manager role to supplier user
+        if (!$supplierUser->hasRole('supplier-manager')) {
+            $supplierUser->assignRole('supplier-manager');
+        }
+
+        $this->command->info('Test users created successfully!');
+        $this->command->line('');
+        $this->command->info('🔹 Test User (Editor):');
+        $this->command->info('   Email: test@example.com');
+        $this->command->info('   Password: password123');
+        $this->command->info('   Role: Editor (can import all data types)');
+        $this->command->line('');
+        $this->command->info('🔹 Supplier User (Supplier Manager):');
+        $this->command->info('   Email: supplier@example.com');
+        $this->command->info('   Password: password123');
+        $this->command->info('   Role: Supplier Manager (suppliers only)');
     }
 }

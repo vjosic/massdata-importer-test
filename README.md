@@ -219,29 +219,55 @@ php artisan serve --host=192.168.1.100
 - **URL**: `http://127.0.0.1:8000/login` (or your configured APP_URL + /login)
 
 #### Default Users (Created by `php artisan db:setup`)
-- **Admin User** (Full Access):
-  - Email: `admin@example.com`
-  - Password: `password123`
-  - Role: Admin (all permissions)
 
-- **Test User** (Suppliers Import Only):
-  - Email: `test@example.com`
-  - Password: `password123`
-  - Role: supplier-manager (import-suppliers permission only)
+**🟢 Administrator (Full Access):**
+- Email: `admin@example.com`
+- Password: `password123` 
+- Role: **Admin** (all permissions)
 
-### User Management
+**🟡 Test User (Editor - All Imports):**
+- Email: `test@example.com`
+- Password: `password123`
+- Role: **Editor** (import all data types + view/export)
+
+**🟠 Supplier Manager (Limited Access):**
+- Email: `supplier@example.com`
+- Password: `password123`
+- Role: **Supplier Manager** (suppliers only)
+
+### User Management & Permissions System
+
+#### Available Permissions
+- `user-management` - Manage users, roles and permissions
+- `import-orders` - Import orders data
+- `import-inventory` - Import inventory/stock data  
+- `import-suppliers` - Import suppliers data
+- `view-audits` - View audit logs and data history
+- `export-data` - Export imported data to files
+- `delete-imports` - Delete import records
+- `manage-imports` - Manage import processes
+
+#### Default Roles & Assigned Permissions
+
+**Admin Role** (Full System Access):
+- ALL permissions (complete administrative access)
+
+**Editor Role** (Data Management):
+- `import-orders`, `import-inventory`, `import-suppliers`
+- `view-audits`, `export-data`, `manage-imports`
+- Cannot manage users or permissions
+
+**Supplier Manager Role** (Limited Access):
+- `import-suppliers`, `view-audits`, `export-data`
+- Restricted to supplier-related operations only
 
 #### Creating Users
 1. Navigate to **Users** in sidebar
 2. Click **Add New User**
 3. Fill required fields: Name, Email, Password
-4. Assign role: Admin, Editor, or supplier-manager
-5. Save user
-
-#### Managing Permissions
-- **Admin Role**: Full access to all features
-- **Editor Role**: Can import and view data, cannot manage users
-- **supplier-manager Role**: Can only import suppliers data
+4. Assign role: Admin, Editor, or Supplier Manager
+5. Optionally assign direct permissions
+6. Save user
 
 ### Data Import Process
 
