@@ -29,8 +29,8 @@ php artisan queue:work
 ```
 
 **Login:** `http://127.0.0.1:8000/login`
-- **Admin**: `admin@example.com` / `password123` 
-- **Test**: `test@example.com` / `password123`
+- **Admin**: `admin` / `password123` 
+- **Test**: `test` / `password123`
 
 ---
 
