@@ -6,7 +6,7 @@
 
 ```bash
 # 1. Clone and install
-git clone <repository>
+git clone https://github.com/vjosic/massdata-importer-test.git
 cd massdata-importer-test
 composer install
 
@@ -105,7 +105,7 @@ Complete Laravel 12 application with AdminLTE 2 interface for mass data import a
 
 1. **Clone & Install Dependencies**
 ```bash
-git clone <repository>
+git clone https://github.com/vjosic/massdata-importer-test.git
 cd massdata-importer-test
 composer install
 ```
