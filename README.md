@@ -87,7 +87,6 @@ Complete Laravel 12 application with AdminLTE 2 interface for mass data import a
 ### Frontend
 - **AdminLTE 2**: Bootstrap 3 based admin template (CDN version)
 - **jQuery**: JavaScript interactions and AJAX requests
-- **Chart.js**: Data visualization for statistics
 - **Font Awesome**: Icon library for UI elements
 
 ## Installation & Setup
@@ -222,16 +221,19 @@ php artisan serve --host=192.168.1.100
 
 **🟢 Administrator (Full Access):**
 - Email: `admin@example.com`
+- Username: `admin`
 - Password: `password123` 
 - Role: **Admin** (all permissions)
 
 **🟡 Test User (Editor - All Imports):**
 - Email: `test@example.com`
+- Username: `test`
 - Password: `password123`
 - Role: **Editor** (import all data types + view/export)
 
 **🟠 Supplier Manager (Limited Access):**
 - Email: `supplier@example.com`
+- Username: `supplier`
 - Password: `password123`
 - Role: **Supplier Manager** (suppliers only)
 
